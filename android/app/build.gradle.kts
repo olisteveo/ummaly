@@ -9,7 +9,7 @@ plugins {
 apply(plugin = "com.google.gms.google-services")
 
 android {
-    namespace = "com.ummaly.ummaly"
+    namespace = "com.ummaly.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ummaly.ummaly"
+        applicationId = "com.ummaly.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
