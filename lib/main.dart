@@ -1,3 +1,7 @@
+// Copyright © 2025 Oliver & Haidar. All rights reserved.
+// This file is part of the Ummaly project and may not be reused,
+// modified, or distributed without express written permission.
+
 import 'package:flutter/material.dart';
 
 void main() {
