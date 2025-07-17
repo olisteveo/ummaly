@@ -5,26 +5,38 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ummaly/features/auth/auth_gate.dart'; // Needed to route after logout
-import 'package:ummaly/features/account/change_password_screen.dart'; // ✅ Import Change Password screen
-import 'package:ummaly/features/account/account_settings_screen.dart'; // ✅ Corrected import for account settings
+import 'package:ummaly/features/auth/auth_gate.dart';
+import 'package:ummaly/features/account/change_password_screen.dart';
+import 'package:ummaly/features/account/account_settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  // Fetch the user's name from Firestore using their UID
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<String> _userNameFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userNameFuture = getUserName();
+  }
+
   Future<String> getUserName() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return 'User';
 
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    return doc.data()?['name'] ?? 'User'; // Fallback if name doesn't exist
+    return doc.data()?['name'] ?? 'User';
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: getUserName(),
+      future: _userNameFuture,
       builder: (context, snapshot) {
         final userName = snapshot.data ?? '';
 
@@ -32,7 +44,6 @@ class HomeScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Welcome to Ummaly'),
             actions: [
-              // Welcome message
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -42,15 +53,16 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Dropdown menu
               PopupMenuButton<String>(
                 onSelected: (value) async {
                   if (value == 'settings') {
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const AccountSettingsScreen()),
                     );
+                    setState(() {
+                      _userNameFuture = getUserName();
+                    });
                   } else if (value == 'change_password') {
                     Navigator.push(
                       context,

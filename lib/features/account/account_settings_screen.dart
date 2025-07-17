@@ -22,9 +22,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   String _error = '';
   String _success = '';
   bool _isLoading = false;
-  bool _obscurePassword = true; // Controls password visibility
+  bool _obscurePassword = true;
 
-  // Load user data from Firestore
   Future<void> loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -38,7 +37,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     }
   }
 
-  // Reauthenticate before sensitive actions
   Future<void> reauthenticate(String password) async {
     final user = FirebaseAuth.instance.currentUser;
     final cred = EmailAuthProvider.credential(
@@ -48,7 +46,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     await user?.reauthenticateWithCredential(cred);
   }
 
-  // Update user info
   Future<void> updateUserData() async {
     setState(() {
       _isLoading = true;
@@ -66,6 +63,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         throw Exception("Name and email cannot be empty");
       }
 
+      if (_passwordController.text.trim().isEmpty) {
+        throw Exception("Current password is required");
+      }
+
       await reauthenticate(_passwordController.text.trim());
 
       await user.updateEmail(_emailController.text.trim());
@@ -78,14 +79,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
       setState(() => _success = 'Account updated successfully');
     } catch (e) {
-      setState(() => _error = 'Update failed');
+      setState(() => _error = e.toString().contains('Current password') ? e.toString() : 'Update failed');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  // Delete user account
   Future<void> deleteAccount() async {
+    if (_passwordController.text.trim().isEmpty) {
+      setState(() {
+        _error = 'Current password is required';
+      });
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -103,7 +110,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
     if (confirm != true) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = '';
+      _success = '';
+    });
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -122,7 +133,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       );
     } catch (e) {
       setState(() {
-        _error = 'Account deletion failed';
+        _error = e.toString().contains('Current password') ? e.toString() : 'Account deletion failed';
         _isLoading = false;
       });
     }
@@ -155,7 +166,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
             const SizedBox(height: 10),
 
-            // Name field
+            const Text(
+              'Confirm your current password to update your account details.',
+              style: TextStyle(color: Colors.black87),
+            ),
+
+            const SizedBox(height: 20),
+
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Name'),
@@ -163,7 +180,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
             const SizedBox(height: 10),
 
-            // Email field
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(labelText: 'Email'),
@@ -171,7 +187,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
             const SizedBox(height: 10),
 
-            // Current Password field with toggle visibility
             TextField(
               controller: _passwordController,
               obscureText: _obscurePassword,
@@ -192,7 +207,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
             const SizedBox(height: 20),
 
-            // Update button
             ElevatedButton(
               onPressed: updateUserData,
               child: const Text('Update Account'),
@@ -200,10 +214,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
             const SizedBox(height: 20),
 
-            // Delete button
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+              ),
               onPressed: deleteAccount,
-              child: const Text('Delete Account', style: TextStyle(color: Colors.red)),
+              child: const Text('Delete Account'),
             ),
           ],
         ),
