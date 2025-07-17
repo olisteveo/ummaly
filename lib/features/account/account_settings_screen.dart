@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/auth_gate.dart';
+import 'package:easy_localization/easy_localization.dart'; // 🌐 Localization
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -24,6 +25,21 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  // 🌐 Language selection options
+  final List<Map<String, String>> _languageOptions = [
+    {'label': 'English', 'code': 'en'},
+    {'label': 'Français', 'code': 'fr'},
+    {'label': 'العربية', 'code': 'ar'},
+  ];
+
+  String _selectedLanguage = 'en';
+
+  @override
+  void initState() {
+    super.initState();
+    loadUserData();
+  }
+
   Future<void> loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -34,6 +50,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     if (data != null) {
       _nameController.text = data['name'] ?? '';
       _emailController.text = data['email'] ?? '';
+      _selectedLanguage = data['language_preference'] ?? 'en';
     }
   }
 
@@ -60,11 +77,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       if (user == null || uid == null) throw Exception("No user");
 
       if (_nameController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
-        throw Exception("Name and email cannot be empty");
+        throw Exception(tr('name_email_required'));
       }
 
       if (_passwordController.text.trim().isEmpty) {
-        throw Exception("Current password is required");
+        throw Exception(tr('password_required'));
       }
 
       await reauthenticate(_passwordController.text.trim());
@@ -74,12 +91,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
+        'language_preference': _selectedLanguage,
         'updated_at': Timestamp.now(),
       });
 
-      setState(() => _success = 'Account updated successfully');
+      // 🌐 Update locale immediately
+      await context.setLocale(Locale(_selectedLanguage));
+
+      setState(() => _success = tr('account_updated_success'));
     } catch (e) {
-      setState(() => _error = e.toString().contains('Current password') ? e.toString() : 'Update failed');
+      setState(() => _error = e.toString().contains('password') ? e.toString() : tr('update_failed'));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -87,22 +108,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   Future<void> deleteAccount() async {
     if (_passwordController.text.trim().isEmpty) {
-      setState(() {
-        _error = 'Current password is required';
-      });
+      setState(() => _error = tr('password_required'));
       return;
     }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete Account"),
-        content: const Text("Are you sure you want to delete your account? This action is irreversible."),
+        title: Text(tr('delete_account')),
+        content: Text(tr('delete_account_confirm')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('cancel'))),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            child: Text(tr('delete'), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -133,23 +152,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       );
     } catch (e) {
       setState(() {
-        _error = e.toString().contains('Current password') ? e.toString() : 'Account deletion failed';
+        _error = e.toString().contains('password') ? e.toString() : tr('delete_failed');
         _isLoading = false;
       });
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-    loadUserData();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Account'),
+        title: Text(tr('manage_account')),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       body: _isLoading
@@ -160,42 +173,50 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           children: [
             if (_error.isNotEmpty)
               Text(_error, style: const TextStyle(color: Colors.red)),
-
             if (_success.isNotEmpty)
               Text(_success, style: const TextStyle(color: Colors.green)),
 
             const SizedBox(height: 10),
-
-            const Text(
-              'Confirm your current password to update your account details.',
-              style: TextStyle(color: Colors.black87),
-            ),
-
+            Text(tr('account_update_note'), style: const TextStyle(color: Colors.black87)),
             const SizedBox(height: 20),
 
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: tr('name')),
             ),
-
             const SizedBox(height: 10),
-
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(labelText: tr('email')),
+            ),
+            const SizedBox(height: 10),
+
+            DropdownButtonFormField<String>(
+              value: _selectedLanguage,
+              decoration: InputDecoration(labelText: tr('language_preference')),
+              items: _languageOptions.map((lang) {
+                return DropdownMenuItem<String>(
+                  value: lang['code'],
+                  child: Text(lang['label'] ?? ''),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedLanguage = value;
+                  });
+                }
+              },
             ),
 
             const SizedBox(height: 10),
-
             TextField(
               controller: _passwordController,
               obscureText: _obscurePassword,
               decoration: InputDecoration(
-                labelText: 'Current Password',
+                labelText: tr('current_password'),
                 suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
+                  icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
                   onPressed: () {
                     setState(() {
                       _obscurePassword = !_obscurePassword;
@@ -204,14 +225,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
 
             ElevatedButton(
               onPressed: updateUserData,
-              child: const Text('Update Account'),
+              child: Text(tr('update_account')),
             ),
-
             const SizedBox(height: 20),
 
             ElevatedButton(
@@ -221,7 +240,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 minimumSize: const Size.fromHeight(48),
               ),
               onPressed: deleteAccount,
-              child: const Text('Delete Account'),
+              child: Text(tr('delete_account')),
             ),
           ],
         ),

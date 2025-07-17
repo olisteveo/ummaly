@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:easy_localization/easy_localization.dart'; // ✅ Don’t forget this import
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -21,7 +22,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool showConfirm = false;
   String? errorBanner;
 
-  // Method to handle password change
   Future<void> changePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -39,26 +39,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         password: currentPasswordController.text.trim(),
       );
 
-      // Re-authenticate the user
       await user.reauthenticateWithCredential(cred);
-
-      // Update password
       await user.updatePassword(newPasswordController.text.trim());
 
-      // Clear all fields
       currentPasswordController.clear();
       newPasswordController.clear();
       confirmPasswordController.clear();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password changed successfully')),
+          SnackBar(content: Text('password_changed_success'.tr())),
         );
       }
     } catch (_) {
-      // Show red banner if any error occurs
       setState(() {
-        errorBanner = 'Password reset failed';
+        errorBanner = 'password_change_failed'.tr();
       });
     } finally {
       if (mounted) {
@@ -73,7 +68,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Change Password'),
+        title: Text('change_password'.tr()),
         bottom: errorBanner != null
             ? PreferredSize(
           preferredSize: const Size.fromHeight(40),
@@ -96,79 +91,61 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Current password
               TextFormField(
                 controller: currentPasswordController,
                 obscureText: !showCurrent,
                 decoration: InputDecoration(
-                  labelText: 'Current Password',
+                  labelText: 'current_password'.tr(),
                   suffixIcon: IconButton(
                     icon: Icon(showCurrent ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () {
-                      setState(() {
-                        showCurrent = !showCurrent;
-                      });
-                    },
+                    onPressed: () => setState(() => showCurrent = !showCurrent),
                   ),
                 ),
                 validator: (value) =>
-                value == null || value.isEmpty ? 'Enter current password' : null,
+                value == null || value.isEmpty ? 'enter_current_password'.tr() : null,
               ),
               const SizedBox(height: 16),
-
-              // New password
               TextFormField(
                 controller: newPasswordController,
                 obscureText: !showNew,
                 decoration: InputDecoration(
-                  labelText: 'New Password',
+                  labelText: 'new_password'.tr(),
                   suffixIcon: IconButton(
                     icon: Icon(showNew ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () {
-                      setState(() {
-                        showNew = !showNew;
-                      });
-                    },
+                    onPressed: () => setState(() => showNew = !showNew),
                   ),
                 ),
                 validator: (value) {
                   if (value == null || value.length < 6) {
-                    return 'New password must be at least 6 characters';
+                    return 'password_min_length'.tr();
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-
-              // Confirm new password
               TextFormField(
                 controller: confirmPasswordController,
                 obscureText: !showConfirm,
                 decoration: InputDecoration(
-                  labelText: 'Confirm New Password',
+                  labelText: 'confirm_new_password'.tr(),
                   suffixIcon: IconButton(
                     icon: Icon(showConfirm ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () {
-                      setState(() {
-                        showConfirm = !showConfirm;
-                      });
-                    },
+                    onPressed: () => setState(() => showConfirm = !showConfirm),
                   ),
                 ),
                 validator: (value) {
                   if (value != newPasswordController.text) {
-                    return 'Passwords do not match';
+                    return 'passwords_do_not_match'.tr();
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
-
               isLoading
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: changePassword,
-                child: const Text('Update Password'),
+                child: Text('update_password'.tr()),
               ),
             ],
           ),

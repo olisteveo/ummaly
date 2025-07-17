@@ -13,20 +13,36 @@ import 'package:ummaly/firebase_options.dart';
 // Entry point for auth logic — decides if user is logged in or not
 import 'package:ummaly/features/auth/auth_gate.dart';
 
-// Your Forgot Password screen (make sure the file name matches)
+// Your Forgot Password screen
 import 'package:ummaly/features/auth/forgot_password.dart';
 
+// EasyLocalization for multi-language support
+import 'package:easy_localization/easy_localization.dart';
+
 void main() async {
-  // Ensures binding is initialized before Firebase is called
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase with platform-specific options (web, Android, etc.)
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Launch the app
-  runApp(const MyApp());
+  // Initialize EasyLocalization
+  await EasyLocalization.ensureInitialized();
+
+  // Launch the app with localization support
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('fr'), // French
+        Locale('ar'), // Arabic
+      ],
+      path: 'assets/translations', // JSON translation files live here
+      fallbackLocale: const Locale('en'),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -36,22 +52,25 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Ummaly',
-
-      // Remove debug banner from top-right corner
       debugShowCheckedModeBanner: false,
 
-      // Theme configuration (Material 3 turned off for flutterfire_ui compatibility)
+      // Load translations from EasyLocalization
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
+
+      // Theme (Material 3 turned off for flutterfire_ui compatibility)
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: false,
       ),
 
-      // Entry point screen, controlled by AuthGate
+      // App entry point
       home: const AuthGate(),
 
-      // Add routes for named navigation
+      // Named routes
       routes: {
-        '/forgot-password': (context) => const ForgotPasswordPage(), // ✅ Added route
+        '/forgot-password': (context) => const ForgotPasswordPage(),
       },
     );
   }

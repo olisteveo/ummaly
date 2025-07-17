@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/auth_gate.dart';
 import 'package:ummaly/features/account/change_password_screen.dart';
 import 'package:ummaly/features/account/account_settings_screen.dart';
+import 'package:easy_localization/easy_localization.dart'; // 🌐 Add this
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,10 +28,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<String> getUserName() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return 'User';
-
+    if (uid == null) return tr('user');
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    return doc.data()?['name'] ?? 'User';
+    return doc.data()?['name'] ?? tr('user');
   }
 
   @override
@@ -42,13 +42,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Welcome to Ummaly'),
+            title: Text('welcome_to_ummaly'.tr()),
             actions: [
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text(
-                    'Welcome, $userName',
+                    '${tr('welcome')}, $userName',
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
@@ -77,24 +77,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     try {
                       await FirebaseAuth.instance.signOut();
-
-                      Navigator.of(context).pop(); // Remove loader
-
+                      Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Signed out successfully')),
+                        SnackBar(content: Text('signed_out_successfully'.tr())),
                       );
-
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (context) => const AuthGate()),
                             (route) => false,
                       );
                     } catch (_) {
-                      Navigator.of(context).pop(); // Remove loader
-
+                      Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Sign out failed'),
+                        SnackBar(
+                          content: Text('sign_out_failed'.tr()),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -102,25 +98,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
                 icon: const Icon(Icons.account_circle),
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'settings',
-                    child: Text('Account Settings'),
+                    child: Text('account_settings'.tr()),
                   ),
                   PopupMenuItem(
                     value: 'change_password',
-                    child: Text('Change Password'),
+                    child: Text('change_password'.tr()),
                   ),
                   PopupMenuItem(
                     value: 'logout',
-                    child: Text('Logout'),
+                    child: Text('logout'.tr()),
                   ),
                 ],
               ),
             ],
           ),
-          body: const Center(
-            child: Text('Home screen content goes here'),
+          body: Center(
+            child: Text('home_screen_content'.tr()),
           ),
         );
       },
