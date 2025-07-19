@@ -145,7 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
 // Confirmation UI
 class _RegistrationSuccess extends StatefulWidget {
-  const _RegistrationSuccess({super.key});
+  const _RegistrationSuccess();
 
   @override
   State<_RegistrationSuccess> createState() => _RegistrationSuccessState();

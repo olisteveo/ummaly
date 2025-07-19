@@ -37,6 +37,7 @@ void main() async {
         Locale('en'), // English
         Locale('fr'), // French
         Locale('ar'), // Arabic
+        Locale('ur'), // Urdu
       ],
       path: 'assets/translations', // JSON translation files live here
       fallbackLocale: const Locale('en'),
