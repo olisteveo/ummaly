@@ -30,6 +30,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     {'label': 'English', 'code': 'en'},
     {'label': 'Français', 'code': 'fr'},
     {'label': 'العربية', 'code': 'ar'},
+    {'label': 'اردو', 'code': 'ur'},
   ];
 
   String _selectedLanguage = 'en';
@@ -85,9 +86,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       }
 
       await reauthenticate(_passwordController.text.trim());
-
       await user.updateEmail(_emailController.text.trim());
 
+      // 🔁 Save language to Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
@@ -95,12 +96,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         'updated_at': Timestamp.now(),
       });
 
-      // 🌐 Update locale immediately
+      // 🌐 Set new locale and delay to allow UI rebuild before showing snackbar
       await context.setLocale(Locale(_selectedLanguage));
+      await Future.delayed(const Duration(milliseconds: 100));
 
-      setState(() => _success = tr('account_updated_success'));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('account_updated_success'))),
+        );
+      }
+
     } catch (e) {
-      setState(() => _error = e.toString().contains('password') ? e.toString() : tr('update_failed'));
+      setState(() {
+        _error = e.toString().contains('password') ? e.toString() : tr('update_failed');
+      });
     } finally {
       setState(() => _isLoading = false);
     }
