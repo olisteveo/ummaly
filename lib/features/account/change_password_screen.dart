@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:easy_localization/easy_localization.dart'; // ✅ Don’t forget this import
+import 'package:easy_localization/easy_localization.dart'; // Don’t forget this import
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});

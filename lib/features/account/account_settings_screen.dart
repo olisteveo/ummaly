@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/auth_gate.dart';
-import 'package:easy_localization/easy_localization.dart'; // 🌐 Localization
+import 'package:easy_localization/easy_localization.dart'; // Localization
+import 'package:ummaly/core/locale/locale_manager.dart';   // LocaleManager added
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -27,9 +28,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   // 🌐 Language selection options
   final List<Map<String, String>> _languageOptions = [
+    {'label': 'العربية', 'code': 'ar'},
     {'label': 'English', 'code': 'en'},
     {'label': 'Français', 'code': 'fr'},
-    {'label': 'العربية', 'code': 'ar'},
+    {'label': 'اردو', 'code': 'ur'},
   ];
 
   String _selectedLanguage = 'en';
@@ -85,7 +87,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       }
 
       await reauthenticate(_passwordController.text.trim());
-
       await user.updateEmail(_emailController.text.trim());
 
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
@@ -95,7 +96,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         'updated_at': Timestamp.now(),
       });
 
-      // 🌐 Update locale immediately
+      // 🌐 Update core locale manager and EasyLocalization
+      await LocaleManager().updateUserLocale(_selectedLanguage);
       await context.setLocale(Locale(_selectedLanguage));
 
       setState(() => _success = tr('account_updated_success'));
