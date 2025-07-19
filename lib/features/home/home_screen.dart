@@ -8,7 +8,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/auth_gate.dart';
 import 'package:ummaly/features/account/change_password_screen.dart';
 import 'package:ummaly/features/account/account_settings_screen.dart';
-import 'package:easy_localization/easy_localization.dart'; // 🌐 Add this
+import 'package:easy_localization/easy_localization.dart'; // Localization
+import 'package:ummaly/core/locale/locale_manager.dart'; // Locale reset on logout
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -77,17 +78,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     try {
                       await FirebaseAuth.instance.signOut();
-                      Navigator.of(context).pop();
+
+                      // Reset locale to device default on logout
+                      LocaleManager().resetToDeviceLocale();
+
+                      Navigator.of(context).pop(); // remove loading dialog
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('signed_out_successfully'.tr())),
                       );
+
+                      // Navigate to AuthGate (login/registration entry point)
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (context) => const AuthGate()),
                             (route) => false,
                       );
                     } catch (_) {
-                      Navigator.of(context).pop();
+                      Navigator.of(context).pop(); // remove loading dialog
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('sign_out_failed'.tr()),
