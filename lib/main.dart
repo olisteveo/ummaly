@@ -19,6 +19,9 @@ import 'package:ummaly/features/auth/forgot_password.dart';
 // EasyLocalization for multi-language support
 import 'package:easy_localization/easy_localization.dart';
 
+// LocaleManager handles language detection, loading, and saving
+import 'package:ummaly/core/locale/locale_manager.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -30,6 +33,9 @@ void main() async {
   // Initialize EasyLocalization
   await EasyLocalization.ensureInitialized();
 
+  // Initialize locale manager (handles device/user language logic)
+  await LocaleManager().init();
+
   // Launch the app with localization support
   runApp(
     EasyLocalization(
@@ -37,9 +43,11 @@ void main() async {
         Locale('en'), // English
         Locale('fr'), // French
         Locale('ar'), // Arabic
+        Locale('ur'), // Urdu
       ],
-      path: 'assets/translations', // JSON translation files live here
+      path: 'translations', // ✅ Corrected path for Flutter web
       fallbackLocale: const Locale('en'),
+      startLocale: LocaleManager().currentLocale,
       child: const MyApp(),
     ),
   );
