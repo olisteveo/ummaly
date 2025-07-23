@@ -43,9 +43,9 @@ void main() async {
         Locale('en'), // English
         Locale('fr'), // French
         Locale('ar'), // Arabic
-        Locale('ur'), // Urdu (if supported, add translation file too)
+        Locale('ur'), // Urdu
       ],
-      path: 'assets/translations', // JSON translation files live here
+      path: 'translations', // ✅ Corrected path for Flutter web
       fallbackLocale: const Locale('en'),
       startLocale: LocaleManager().currentLocale,
       child: const MyApp(),

@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/auth_gate.dart';
-import 'package:easy_localization/easy_localization.dart'; // Localization
-import 'package:ummaly/core/locale/locale_manager.dart';   // LocaleManager added
+import 'package:easy_localization/easy_localization.dart';
+import 'package:ummaly/core/locale/locale_manager.dart';
+import 'package:ummaly/core/widgets/snackbar_helper.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -21,16 +22,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  String _error = '';
-  String _success = '';
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  // 🌐 Language selection options
   final List<Map<String, String>> _languageOptions = [
-    {'label': 'العربية', 'code': 'ar'},
     {'label': 'English', 'code': 'en'},
     {'label': 'Français', 'code': 'fr'},
+    {'label': 'العربية', 'code': 'ar'},
     {'label': 'اردو', 'code': 'ur'},
   ];
 
@@ -66,11 +64,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   }
 
   Future<void> updateUserData() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-      _success = '';
-    });
+    setState(() => _isLoading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -96,21 +90,26 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         'updated_at': Timestamp.now(),
       });
 
-      // 🌐 Update core locale manager and EasyLocalization
-      await LocaleManager().updateUserLocale(_selectedLanguage);
-      await context.setLocale(Locale(_selectedLanguage));
+      await LocaleManager().updateUserLocale(_selectedLanguage, context: context);
 
-      setState(() => _success = tr('account_updated_success'));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SnackbarHelper.show(context, tr('account_updated_success'));
+      });
     } catch (e) {
-      setState(() => _error = e.toString().contains('password') ? e.toString() : tr('update_failed'));
+      SnackbarHelper.show(
+        context,
+        e.toString().contains('password') ? e.toString() : tr('update_failed'),
+        backgroundColor: Colors.red,
+      );
     } finally {
       setState(() => _isLoading = false);
+      _passwordController.clear(); // ✅ clear password
     }
   }
 
   Future<void> deleteAccount() async {
     if (_passwordController.text.trim().isEmpty) {
-      setState(() => _error = tr('password_required'));
+      SnackbarHelper.show(context, tr('password_required'), backgroundColor: Colors.red);
       return;
     }
 
@@ -131,11 +130,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
     if (confirm != true) return;
 
-    setState(() {
-      _isLoading = true;
-      _error = '';
-      _success = '';
-    });
+    setState(() => _isLoading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -147,16 +142,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       await FirebaseFirestore.instance.collection('users').doc(uid).delete();
       await user.delete();
 
+      _passwordController.clear(); // ✅ clear password before navigating
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const AuthGate()),
             (route) => false,
       );
     } catch (e) {
-      setState(() {
-        _error = e.toString().contains('password') ? e.toString() : tr('delete_failed');
-        _isLoading = false;
-      });
+      SnackbarHelper.show(
+        context,
+        e.toString().contains('password') ? e.toString() : tr('delete_failed'),
+        backgroundColor: Colors.red,
+      );
+      setState(() => _isLoading = false);
+      _passwordController.clear(); // ✅ also clear on failure
     }
   }
 
@@ -173,11 +172,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            if (_error.isNotEmpty)
-              Text(_error, style: const TextStyle(color: Colors.red)),
-            if (_success.isNotEmpty)
-              Text(_success, style: const TextStyle(color: Colors.green)),
-
             const SizedBox(height: 10),
             Text(tr('account_update_note'), style: const TextStyle(color: Colors.black87)),
             const SizedBox(height: 20),

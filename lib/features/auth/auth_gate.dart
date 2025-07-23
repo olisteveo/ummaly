@@ -26,8 +26,11 @@ class AuthGate extends StatelessWidget {
           return const HomeScreen();
         }
 
-        // If not signed in, show the login screen
-        return const LoginScreen();
+        // If not signed in, force LTR layout on login screen
+        return const Directionality(
+          textDirection: TextDirection.ltr,
+          child: LoginScreen(),
+        );
       },
     );
   }
