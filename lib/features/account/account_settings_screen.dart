@@ -2,249 +2,195 @@
 // This file is part of the Ummaly project and may not be reused,
 // modified, or distributed without express written permission.
 
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ummaly/features/auth/auth_gate.dart';
-import 'package:easy_localization/easy_localization.dart'; // 🌐 Localization
+import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:ummaly/core/locale/locale_manager.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
-  const AccountSettingsScreen({super.key});
+  const AccountSettingsScreen({Key? key}) : super(key: key);
 
   @override
   State<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  String _error = '';
-  String _success = '';
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  String? _selectedLanguageCode;
   bool _isLoading = false;
-  bool _obscurePassword = true;
-
-  // 🌐 Language selection options
-  final List<Map<String, String>> _languageOptions = [
-    {'label': 'English', 'code': 'en'},
-    {'label': 'Français', 'code': 'fr'},
-    {'label': 'العربية', 'code': 'ar'},
-  ];
-
-  String _selectedLanguage = 'en';
 
   @override
   void initState() {
     super.initState();
-    loadUserData();
+    _loadUserData();
   }
 
-  Future<void> loadUserData() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+  Future<void> _loadUserData() async {
+    final User? user = _auth.currentUser;
+    if (user == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final data = doc.data();
-
-    if (data != null) {
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      final data = userDoc.data() as Map<String, dynamic>;
       _nameController.text = data['name'] ?? '';
       _emailController.text = data['email'] ?? '';
-      _selectedLanguage = data['language_preference'] ?? 'en';
+      _selectedLanguageCode = data['language_preference'] ?? context.locale.languageCode;
+      _passwordController.clear(); // Ensure password field is reset
+      setState(() {});
     }
   }
 
-  Future<void> reauthenticate(String password) async {
-    final user = FirebaseAuth.instance.currentUser;
-    final cred = EmailAuthProvider.credential(
-      email: user?.email ?? '',
-      password: password,
-    );
-    await user?.reauthenticateWithCredential(cred);
-  }
+  Future<void> _saveChanges() async {
+    final User? user = _auth.currentUser;
+    if (user == null) return;
 
-  Future<void> updateUserData() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-      _success = '';
-    });
+    final updatedName = _nameController.text.trim();
+    final updatedEmail = _emailController.text.trim();
+    final updatedLang = _selectedLanguageCode;
+    final password = _passwordController.text;
+
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('enter_current_password'.tr())),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      final uid = user?.uid;
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
 
-      if (user == null || uid == null) throw Exception("No user");
-
-      if (_nameController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
-        throw Exception(tr('name_email_required'));
+      if (updatedEmail != user.email) {
+        await user.updateEmail(updatedEmail);
       }
 
-      if (_passwordController.text.trim().isEmpty) {
-        throw Exception(tr('password_required'));
-      }
-
-      await reauthenticate(_passwordController.text.trim());
-
-      await user.updateEmail(_emailController.text.trim());
-
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'language_preference': _selectedLanguage,
-        'updated_at': Timestamp.now(),
+      await _firestore.collection('users').doc(user.uid).update({
+        'name': updatedName,
+        'email': updatedEmail,
+        'language_preference': updatedLang,
+        'updated_at': FieldValue.serverTimestamp(),
       });
 
-      // 🌐 Update locale immediately
-      await context.setLocale(Locale(_selectedLanguage));
+      if (updatedLang != null && context.locale.languageCode != updatedLang) {
+        await LocaleManager().updateUserLocale(updatedLang);
+        if (mounted) {
+          context.setLocale(Locale(updatedLang));
+        }
+      }
 
-      setState(() => _success = tr('account_updated_success'));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('account_updated_success'.tr())),
+      );
     } catch (e) {
-      setState(() => _error = e.toString().contains('password') ? e.toString() : tr('update_failed'));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('update_failed'.tr())),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  Future<void> deleteAccount() async {
-    if (_passwordController.text.trim().isEmpty) {
-      setState(() => _error = tr('password_required'));
-      return;
-    }
+  Future<void> _deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(tr('delete_account')),
-        content: Text(tr('delete_account_confirm')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('cancel'))),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(tr('delete'), style: const TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = '';
-      _success = '';
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      final uid = user?.uid;
-      if (user == null || uid == null) throw Exception("No user");
-
-      await reauthenticate(_passwordController.text.trim());
-
-      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-      await user.delete();
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-            (route) => false,
-      );
-    } catch (e) {
-      setState(() {
-        _error = e.toString().contains('password') ? e.toString() : tr('delete_failed');
-        _isLoading = false;
-      });
-    }
+    await _firestore.collection('users').doc(user.uid).delete();
+    await user.delete();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('manage_account')),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
+      appBar: AppBar(title: Text('account_settings'.tr())),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            if (_error.isNotEmpty)
-              Text(_error, style: const TextStyle(color: Colors.red)),
-            if (_success.isNotEmpty)
-              Text(_success, style: const TextStyle(color: Colors.green)),
-
-            const SizedBox(height: 10),
-            Text(tr('account_update_note'), style: const TextStyle(color: Colors.black87)),
-            const SizedBox(height: 20),
-
-            TextField(
+            TextFormField(
               controller: _nameController,
-              decoration: InputDecoration(labelText: tr('name')),
+              decoration: InputDecoration(labelText: 'name'.tr()),
             ),
-            const SizedBox(height: 10),
-            TextField(
+            const SizedBox(height: 16),
+            TextFormField(
               controller: _emailController,
-              decoration: InputDecoration(labelText: tr('email')),
+              decoration: InputDecoration(labelText: 'email'.tr()),
             ),
-            const SizedBox(height: 10),
-
+            const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedLanguage,
-              decoration: InputDecoration(labelText: tr('language_preference')),
-              items: _languageOptions.map((lang) {
-                return DropdownMenuItem<String>(
+              value: _selectedLanguageCode,
+              items: [
+                {'code': 'en', 'label': 'English'},
+                {'code': 'fr', 'label': 'Français'},
+                {'code': 'ar', 'label': 'العربية'},
+                {'code': 'ur', 'label': 'اردو'},
+              ]
+                  .map(
+                    (lang) => DropdownMenuItem(
                   value: lang['code'],
-                  child: Text(lang['label'] ?? ''),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _selectedLanguage = value;
-                  });
-                }
-              },
-            ),
-
-            const SizedBox(height: 10),
-            TextField(
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              decoration: InputDecoration(
-                labelText: tr('current_password'),
-                suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
+                  child: Text(lang['label']!),
                 ),
+              )
+                  .toList(),
+              onChanged: (val) {
+                setState(() => _selectedLanguageCode = val);
+              },
+              decoration: InputDecoration(labelText: 'language'.tr()),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: InputDecoration(labelText: 'password'.tr()),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: _saveChanges,
+                child: Text('update_account'.tr()),
               ),
             ),
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: updateUserData,
-              child: Text(tr('update_account')),
-            ),
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(48),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _deleteAccount,
+              child: Text(
+                'delete_account'.tr(),
+                style: const TextStyle(color: Colors.red),
               ),
-              onPressed: deleteAccount,
-              child: Text(tr('delete_account')),
             ),
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }
