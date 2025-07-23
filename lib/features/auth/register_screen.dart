@@ -17,9 +17,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String errorMessage = '';
   bool isLoading = false;
-  bool registrationComplete = false;
+  bool emailSent = false;
+  bool verifying = false;
 
-  // Handles Firebase registration with logging
   Future<void> register() async {
     setState(() {
       isLoading = true;
@@ -27,68 +27,86 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // Create user in Firebase Auth
       final UserCredential userCredential =
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      print("✅ Firebase Auth success");
+      final user = userCredential.user;
 
-      // Firestore write inside nested try block
-      try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
+      if (user != null) {
+        // Firestore doc written immediately after creation
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'name': nameController.text.trim(),
           'email': emailController.text.trim(),
           'role_id': 'user',
+          'language_preference': 'en',
           'created_at': Timestamp.now(),
           'updated_at': Timestamp.now(),
+          'email_verified': false,
         });
 
-        print("📦 Firestore write success");
+        await user.sendEmailVerification();
 
         setState(() {
-          registrationComplete = true;
-          isLoading = false;
-        });
-
-        print("🎉 State updated: registrationComplete = true");
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Future.delayed(const Duration(seconds: 3), () {
-            if (mounted) {
-              print("🔁 Redirecting to LoginScreen...");
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            }
-          });
-        });
-      } catch (firestoreError) {
-        print("❗ Firestore write failed: $firestoreError");
-        setState(() {
-          errorMessage = 'Failed to save user info';
+          emailSent = true;
           isLoading = false;
         });
       }
     } on FirebaseAuthException catch (e) {
-      print("❌ FirebaseAuthException: ${e.message}");
       setState(() {
         errorMessage = e.message ?? 'Registration failed';
         isLoading = false;
       });
     } catch (e) {
-      print("🔥 Unexpected error: $e");
       setState(() {
         errorMessage = 'An unexpected error occurred';
         isLoading = false;
       });
     }
+  }
+
+  Future<void> checkEmailVerifiedAndWriteToFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      verifying = true;
+      errorMessage = '';
+    });
+
+    await user.reload();
+    final refreshedUser = FirebaseAuth.instance.currentUser;
+
+    if (refreshedUser != null && refreshedUser.emailVerified) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(refreshedUser.uid)
+            .update({
+          'email_verified': true,
+          'updated_at': Timestamp.now(),
+        });
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      } catch (e) {
+        setState(() {
+          errorMessage = 'Failed to update Firestore after verification.';
+        });
+      }
+    } else {
+      setState(() {
+        errorMessage = 'Please verify your email before continuing.';
+      });
+    }
+
+    setState(() {
+      verifying = false;
+    });
   }
 
   @override
@@ -97,10 +115,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(title: const Text("Register")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: registrationComplete
-            ? const _RegistrationSuccess()
-            : isLoading
+        child: isLoading
             ? const Center(child: CircularProgressIndicator())
+            : emailSent
+            ? _buildEmailVerificationPrompt()
             : _buildRegistrationForm(),
       ),
     );
@@ -125,10 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           obscureText: true,
         ),
         const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: register,
-          child: const Text("Register"),
-        ),
+        ElevatedButton(onPressed: register, child: const Text("Register")),
         TextButton(
           onPressed: () {
             Navigator.push(
@@ -141,48 +156,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ],
     );
   }
-}
 
-// Confirmation UI
-class _RegistrationSuccess extends StatefulWidget {
-  const _RegistrationSuccess();
-
-  @override
-  State<_RegistrationSuccess> createState() => _RegistrationSuccessState();
-}
-
-class _RegistrationSuccessState extends State<_RegistrationSuccess> {
-  @override
-  void initState() {
-    super.initState();
-
-    // Redirect after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle, color: Colors.green, size: 80),
-          SizedBox(height: 16),
-          Text(
-            'Registration successful!',
-            style: TextStyle(fontSize: 20),
-          ),
-          SizedBox(height: 8),
-          Text('Redirecting to login...'),
-        ],
-      ),
+  Widget _buildEmailVerificationPrompt() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.email, color: Colors.blue, size: 80),
+        const SizedBox(height: 16),
+        const Text('Verification email sent!', style: TextStyle(fontSize: 20)),
+        const SizedBox(height: 8),
+        const Text('Please check your inbox and verify your email.'),
+        const SizedBox(height: 20),
+        if (errorMessage.isNotEmpty)
+          Text(errorMessage, style: const TextStyle(color: Colors.red)),
+        ElevatedButton(
+          onPressed: verifying ? null : checkEmailVerifiedAndWriteToFirestore,
+          child: verifying
+              ? const CircularProgressIndicator()
+              : const Text("I have verified my email"),
+        ),
+      ],
     );
   }
 }

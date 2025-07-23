@@ -6,7 +6,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:easy_localization/easy_localization.dart';
 
 class LocaleManager {
   static final LocaleManager _instance = LocaleManager._internal();
@@ -17,6 +16,7 @@ class LocaleManager {
   Locale get currentLocale => _currentLocale;
 
   /// Call this during app startup BEFORE runApp()
+  /// Loads saved user locale if logged in, otherwise uses device locale.
   Future<void> init() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -26,7 +26,7 @@ class LocaleManager {
     }
   }
 
-  /// Loads user's saved locale from Firestore
+  /// Loads user's saved locale from Firestore if available.
   Future<void> _loadLocaleFromFirestore(String userId) async {
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
@@ -34,14 +34,14 @@ class LocaleManager {
       if (langCode != null) {
         _currentLocale = Locale(langCode);
       } else {
-        _setLocaleFromDevice(); // fallback if field missing
+        _setLocaleFromDevice();
       }
     } catch (e) {
-      _setLocaleFromDevice(); // fallback on error
+      _setLocaleFromDevice();
     }
   }
 
-  /// Sets the locale from the device
+  /// Sets the locale from the device language if supported.
   void _setLocaleFromDevice() {
     final systemLocale = PlatformDispatcher.instance.locale;
     final supportedLangs = ['en', 'ar', 'fr', 'ur'];
@@ -50,9 +50,9 @@ class LocaleManager {
         : const Locale('en');
   }
 
-  /// Updates user's locale manually from dropdown etc.
-  /// Also applies it via context if passed.
-  Future<void> updateUserLocale(String languageCode, {BuildContext? context}) async {
+  /// Updates the user's locale in Firestore and locally stores it.
+  /// Use this when saving language changes in settings screen.
+  Future<void> updateUserLocale(String languageCode) async {
     _currentLocale = Locale(languageCode);
 
     final user = FirebaseAuth.instance.currentUser;
@@ -61,23 +61,57 @@ class LocaleManager {
         'language_preference': languageCode,
       });
     }
-
-    if (context != null) {
-      await context.setLocale(Locale(languageCode));
-    }
   }
 
-  /// Resets to device locale on logout
+  /// Used by settings screen to both update Firestore and local cache.
+  /// Keeps naming consistent with context.setLocale() usage.
+  static Future<void> setLocale(Locale locale) async {
+    await LocaleManager().updateUserLocale(locale.languageCode);
+  }
+
+  /// Resets to system locale after logout or account deletion
   void resetToDeviceLocale() {
     _setLocaleFromDevice();
   }
 
-  /// Used after logout to restore system/default locale in UI
+  /// Returns system locale if supported, otherwise defaults to English
   Locale getDeviceLocaleOrDefault() {
     final systemLocale = PlatformDispatcher.instance.locale;
     final supportedLangs = ['en', 'ar', 'fr', 'ur'];
     return supportedLangs.contains(systemLocale.languageCode)
         ? Locale(systemLocale.languageCode)
         : const Locale('en');
+  }
+
+  /// Returns the display name of a language code based on the current locale
+  String getLanguageName(String code, Locale currentLocale) {
+    final names = {
+      'en': {
+        'en': 'English',
+        'fr': 'Anglais',
+        'ar': 'الإنجليزية',
+        'ur': 'انگریزی',
+      },
+      'fr': {
+        'en': 'French',
+        'fr': 'Français',
+        'ar': 'الفرنسية',
+        'ur': 'فرانسیسی',
+      },
+      'ar': {
+        'en': 'Arabic',
+        'fr': 'Arabe',
+        'ar': 'العربية',
+        'ur': 'عربی',
+      },
+      'ur': {
+        'en': 'Urdu',
+        'fr': 'Ourdou',
+        'ar': 'الأردية',
+        'ur': 'اردو',
+      },
+    };
+
+    return names[code]?[currentLocale.languageCode] ?? code;
   }
 }
