@@ -1,4 +1,7 @@
+// Copyright © 2025 Oliver & Haidar. All rights reserved.
+
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart' as painting;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/home/home_screen.dart';
@@ -14,58 +17,55 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  User? _user;
-  bool _isInitializing = true;
+  late Future<User?> _initUserFuture;
 
   @override
   void initState() {
     super.initState();
-    _handleAuthChanges();
+    _initUserFuture = _prepareUserAndLocale();
   }
 
-  void _handleAuthChanges() {
-    FirebaseAuth.instance.authStateChanges().listen((user) async {
-      if (!mounted) return;
+  /// Handles logic for:
+  /// - Checking if a user is logged in and verified
+  /// - Resetting language to English on logout or unverified user
+  /// - Applying saved language on login
+  Future<User?> _prepareUserAndLocale() async {
+    final user = FirebaseAuth.instance.currentUser;
 
-      _user = user;
+    if (user == null) {
+      // 🟥 Not logged in — force app to LTR English
+      await context.setLocale(const Locale('en'));
+      return null;
+    }
 
-      if (user == null) {
-        await context.setLocale(const Locale('en')); // Reset to default on logout
-        setState(() => _isInitializing = false);
-        return;
-      }
+    // 🔁 Refresh user in case verification was done just now
+    await user.reload();
+    final refreshedUser = FirebaseAuth.instance.currentUser;
 
-      await user.reload();
-      final refreshedUser = FirebaseAuth.instance.currentUser;
+    // ❌ If not verified, sign them out and revert to English
+    if (refreshedUser == null || !refreshedUser.emailVerified) {
+      await FirebaseAuth.instance.signOut();
+      await context.setLocale(const Locale('en'));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SnackbarHelper.show(
+          context,
+          'Please verify your email before logging in.',
+          backgroundColor: Colors.orange,
+        );
+      });
+      return null;
+    }
 
-      if (refreshedUser == null || !refreshedUser.emailVerified) {
-        await FirebaseAuth.instance.signOut();
-        await context.setLocale(const Locale('en'));
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            SnackbarHelper.show(
-              context,
-              'Please verify your email before logging in.',
-              backgroundColor: Colors.orange,
-            );
-          }
-        });
-        setState(() {
-          _user = null;
-          _isInitializing = false;
-        });
-        return;
-      }
+    // ✅ Verified: apply saved language
+    final langCode = await _getUserLanguage(user.uid);
+    if (langCode != null) {
+      await context.setLocale(Locale(langCode));
+    }
 
-      final langCode = await _getUserLanguage(user.uid);
-      if (langCode != null && mounted) {
-        await context.setLocale(Locale(langCode));
-      }
-
-      setState(() => _isInitializing = false);
-    });
+    return user;
   }
 
+  /// Fetches the user's saved language preference from Firestore
   Future<String?> _getUserLanguage(String uid) async {
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -77,16 +77,29 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitializing) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return FutureBuilder<User?>(
+      future: _initUserFuture,
+      builder: (context, snapshot) {
+        // ⏳ Still loading user and language data
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    if (_user == null) {
-      return const LoginScreen();
-    }
+        final user = snapshot.data;
 
-    return const HomeScreen();
+        // 👤 Not logged in — show login screen with enforced LTR layout
+        if (user == null) {
+          return Directionality(
+            textDirection: painting.TextDirection.ltr,
+            child: const LoginScreen(),
+          );
+        }
+
+        // 🏠 Logged in and verified — proceed to home screen
+        return const HomeScreen();
+      },
+    );
   }
 }
