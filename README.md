@@ -17,7 +17,7 @@ Ummaly addresses the lack of a reliable, unified source for halal verification. 
 ## Core Features (MVP)
 
 - Search halal-certified restaurants by location
-- Scan food and product barcodes to check halal status (first 5 scans free)
+- Scan food and product barcodes to check haram ingredients (first 5 scans free)
 - Track individual scan history by user
 - View prayer times based on user geolocation
 - Subscribe for unlimited scanning and full access using Stripe
