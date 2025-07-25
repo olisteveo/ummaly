@@ -60,5 +60,10 @@
   "account_update_note": "يرجى تأكيد كلمة المرور الحالية لتحديث بيانات الحساب.",
   "language_preference": "تفضيل اللغة",
   "account_updated_success": "تم تحديث الحساب بنجاح",
-  "update_failed": "فشل التحديث"
+  "update_failed": "فشل التحديث",
+  "barcode_scanner": "ماسح الباركود",
+  "find_restaurants": "البحث عن المطاعم",
+  "prayer_times": "أوقات الصلاة",
+  "events": "الفعاليات",
+  "blog_posts": "مقالات المدونة"
 }

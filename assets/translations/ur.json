@@ -60,5 +60,10 @@
   "account_update_note": "اکاؤنٹ کی معلومات اپ ڈیٹ کرنے کے لیے موجودہ پاس ورڈ کی تصدیق کریں۔",
   "language_preference": "زبان کی ترجیح",
   "account_updated_success": "اکاؤنٹ کامیابی سے اپ ڈیٹ ہو گیا",
-  "update_failed": "اپ ڈیٹ ناکام ہو گیا"
+  "update_failed": "اپ ڈیٹ ناکام ہو گیا",
+  "barcode_scanner": "بارکوڈ اسکینر",
+  "find_restaurants": "ریسٹورنٹ تلاش کریں",
+  "prayer_times": "نماز کے اوقات",
+  "events": "ایونٹس",
+  "blog_posts": "بلاگ پوسٹس"
 }
