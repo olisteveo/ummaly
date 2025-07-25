@@ -1,4 +1,4 @@
-package com.ummaly.ummaly
+package com.ummaly.app
 
 import io.flutter.embedding.android.FlutterActivity
 
