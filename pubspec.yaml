@@ -1,6 +1,6 @@
 name: ummaly
 description: "Halal verification app"
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -15,39 +15,28 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Firebase core services and authentication
-  firebase_core: ^2.25.4
-  firebase_auth: ^4.17.4
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.7.0
+  cloud_firestore: ^5.6.12
 
-  # Prebuilt Firebase Auth UI
-  flutterfire_ui: ^0.4.0
+  # Facebook auth
+  flutter_facebook_auth: ^7.1.2
+
+  # State management
   provider: ^6.1.2
 
   # Localization support
   easy_localization: ^3.0.3
 
-  cloud_firestore: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # Recommended linting rules
   flutter_lints: ^5.0.0
 
 flutter:
 
-  # Enables use of Material Design icons
   uses-material-design: true
 
-  # Localisation assets for easy_localization
   assets:
     - assets/translations/
-
-  # Font and image assets can be configured here as needed
-  # Example:
-  # assets:
-  #   - images/logo.png
-
-  # fonts:
-  #   - family: YourFontFamily
-  #     fonts:
-  #       - asset: fonts/YourFont-Regular.ttf

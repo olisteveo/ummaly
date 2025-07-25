@@ -45,7 +45,7 @@ void main() async {
         Locale('ar'), // Arabic
         Locale('ur'), // Urdu
       ],
-      path: 'translations', // ✅ Corrected path for Flutter web
+      path: 'assets/translations', // ✅ Corrected path for Flutter web
       fallbackLocale: const Locale('en'),
       startLocale: LocaleManager().currentLocale,
       child: const MyApp(),
