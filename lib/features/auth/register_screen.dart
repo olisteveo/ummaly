@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
+import 'package:ummaly/theme/styles.dart'; // Import shared styles
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,7 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final user = userCredential.user;
 
       if (user != null) {
-        // Firestore doc written immediately after creation
+        // Create user document in Firestore
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'name': nameController.text.trim(),
           'email': emailController.text.trim(),
@@ -124,11 +125,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // Registration form UI
   Widget _buildRegistrationForm() {
     return Column(
       children: [
         if (errorMessage.isNotEmpty)
-          Text(errorMessage, style: const TextStyle(color: Colors.red)),
+          Text(
+            errorMessage,
+            style: AppTextStyles.error, // replaced inline red text style
+          ),
         TextField(
           controller: nameController,
           decoration: const InputDecoration(labelText: "Name"),
@@ -143,7 +148,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           obscureText: true,
         ),
         const SizedBox(height: 20),
-        ElevatedButton(onPressed: register, child: const Text("Register")),
+        ElevatedButton(
+          style: AppButtons.primaryButton, // use shared primary button style
+          onPressed: register,
+          child: const Text("Register"),
+        ),
         TextButton(
           onPressed: () {
             Navigator.push(
@@ -157,19 +166,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // Email verification UI after registration
   Widget _buildEmailVerificationPrompt() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Icon(Icons.email, color: Colors.blue, size: 80),
         const SizedBox(height: 16),
-        const Text('Verification email sent!', style: TextStyle(fontSize: 20)),
+        Text(
+          'Verification email sent!',
+          style: AppTextStyles.heading.copyWith(fontSize: 20),
+          // replaced inline TextStyle(fontSize: 20)
+        ),
         const SizedBox(height: 8),
         const Text('Please check your inbox and verify your email.'),
         const SizedBox(height: 20),
         if (errorMessage.isNotEmpty)
-          Text(errorMessage, style: const TextStyle(color: Colors.red)),
+          Text(
+            errorMessage,
+            style: AppTextStyles.error, // replaced inline red text style
+          ),
         ElevatedButton(
+          style: AppButtons.primaryButton, // consistent button styling
           onPressed: verifying ? null : checkEmailVerifiedAndWriteToFirestore,
           child: verifying
               ? const CircularProgressIndicator()

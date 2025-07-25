@@ -60,5 +60,10 @@
   "account_update_note": "Veuillez confirmer votre mot de passe actuel pour mettre à jour les informations de votre compte.",
   "language_preference": "Préférence linguistique",
   "account_updated_success": "Compte mis à jour avec succès",
-  "update_failed": "Échec de la mise à jour"
+  "update_failed": "Échec de la mise à jour",
+  "barcode_scanner": "Scanner de codes-barres",
+  "find_restaurants": "Trouver des restaurants",
+  "prayer_times": "Horaires de prière",
+  "events": "Événements",
+  "blog_posts": "Articles de blog"
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ummaly/features/home/home_screen.dart';
 import 'package:ummaly/features/auth/register_screen.dart';
+import 'package:ummaly/theme/styles.dart'; // Use shared colors, text, and button styles
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String errorMessage = '';
 
-  /// Attempts Firebase sign-in with email/password
+  // Firebase email/password login
   Future<void> signIn() async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -45,14 +46,16 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Error message section using shared error text style
             if (errorMessage.isNotEmpty)
               Text(
                 errorMessage,
-                style: const TextStyle(color: Colors.red),
+                style: AppTextStyles.error, // replaced inline red TextStyle
               ),
 
             const SizedBox(height: 10),
 
+            // Email field
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: "Email"),
@@ -61,12 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 10),
 
+            // Password field
             TextField(
               controller: passwordController,
               decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
 
+            // Forgot password link
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
@@ -79,9 +84,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 20),
 
+            // Login button using shared primary style
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: AppButtons.primaryButton, // applied global style
                 onPressed: signIn,
                 child: const Text("Login"),
               ),
@@ -89,6 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 20),
 
+            // Navigate to register screen
             Center(
               child: TextButton(
                 onPressed: () {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:easy_localization/easy_localization.dart'; // Don’t forget this import
+import 'package:easy_localization/easy_localization.dart';
+import 'package:ummaly/theme/styles.dart'; // Import the shared styles file for colors, text, and buttons
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -73,12 +74,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ? PreferredSize(
           preferredSize: const Size.fromHeight(40),
           child: Container(
-            color: Colors.red,
+            color: AppColors.error, // replaced inline Colors.red
             width: double.infinity,
             padding: const EdgeInsets.all(8),
             child: Text(
               errorBanner!,
-              style: const TextStyle(color: Colors.white),
+              style: AppTextStyles.button.copyWith(color: AppColors.white),
+              // replaced inline TextStyle(color: Colors.white)
+              // using the shared button style and forcing white color
               textAlign: TextAlign.center,
             ),
           ),
@@ -91,6 +94,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Current password field
               TextFormField(
                 controller: currentPasswordController,
                 obscureText: !showCurrent,
@@ -105,6 +109,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 value == null || value.isEmpty ? 'enter_current_password'.tr() : null,
               ),
               const SizedBox(height: 16),
+
+              // New password field
               TextFormField(
                 controller: newPasswordController,
                 obscureText: !showNew,
@@ -123,6 +129,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
+              // Confirm new password field
               TextFormField(
                 controller: confirmPasswordController,
                 obscureText: !showConfirm,
@@ -141,9 +149,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 },
               ),
               const SizedBox(height: 24),
+
+              // Update password button with shared button style
               isLoading
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
+                style: AppButtons.primaryButton,
                 onPressed: changePassword,
                 child: Text('update_password'.tr()),
               ),

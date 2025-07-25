@@ -60,5 +60,10 @@
   "account_update_note": "Confirm your current password to update your account details.",
   "language_preference": "Language Preference",
   "account_updated_success": "Account updated successfully",
-  "update_failed": "Update failed"
+  "update_failed": "Update failed",
+  "barcode_scanner": "Barcode Scanner",
+  "find_restaurants": "Find Restaurants",
+  "prayer_times": "Prayer Times",
+  "events": "Events",
+  "blog_posts": "Blog Posts"
 }
