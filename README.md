@@ -1,6 +1,6 @@
 # ummaly
 
-Halal verification app
+Halal Verification App for Android & ios
 
 # Ummaly – Halal Lifestyle Mobile App
 
