@@ -48,6 +48,13 @@ class AppTextStyles {
     fontWeight: FontWeight.w600,
     color: AppColors.white,
   );
+
+  // NEW: Style for scan instructions
+  static const instruction = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    color: Colors.grey,
+  );
 }
 
 /// App Button Styles
@@ -67,11 +74,20 @@ class AppButtons {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     textStyle: AppTextStyles.button,
   );
+
+  // NEW: Smaller button (used for “Scan Again”)
+  static ButtonStyle secondaryButton = ElevatedButton.styleFrom(
+    backgroundColor: AppColors.scanner.withOpacity(0.8),
+    foregroundColor: AppColors.white,
+    minimumSize: const Size(160, 45),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    textStyle: AppTextStyles.button.copyWith(fontSize: 16),
+  );
 }
 
 /// App Card Styles (used for dashboard feature cards)
 class AppCards {
-  static CardStyle({
+  static CardTheme card({
     Color backgroundColor = AppColors.primary,
     double elevation = 4,
     double radius = 16,
@@ -85,3 +101,16 @@ class AppCards {
     );
   }
 }
+
+/// App Gradients (for screens like Home)
+class AppGradients {
+  static const LinearGradient homeBackground = LinearGradient(
+    colors: [
+      AppColors.primary,
+      AppColors.accent,
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
+
