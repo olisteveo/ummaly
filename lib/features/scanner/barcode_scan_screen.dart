@@ -22,9 +22,8 @@ class BarcodeScanScreen extends StatefulWidget {
 }
 
 class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
-  String? scannedCode; // Holds last scanned barcode
-  String? productName; // Product name from backend
-  String? productBrand; // Product brand from backend
+  String? scannedCode;
+  Map<String, dynamic>? productData; // ✅ Hold all product details
   bool isLoading = false;
   String? errorMessage;
 
@@ -33,14 +32,13 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
     print("📤 Sending barcode $barcode to backend...");
     setState(() {
       isLoading = true;
-      productName = null;
-      productBrand = null;
+      productData = null;
       errorMessage = null;
     });
 
     try {
       final response = await http.post(
-        Uri.parse("${getBaseUrl()}/scan"), // ✅ Uses getBaseUrl() dynamically
+        Uri.parse("${getBaseUrl()}/scan"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"barcode": barcode}),
       );
@@ -51,8 +49,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
         final data = jsonDecode(response.body);
         print("✅ Product from backend: ${data['product']['name']}");
         setState(() {
-          productName = data['product']['name'] ?? "Unnamed Product";
-          productBrand = data['product']['brand'] ?? "Unknown Brand";
+          productData = data['product']; // ✅ Save full product object
         });
       } else {
         print("❌ Backend returned ${response.statusCode}");
@@ -97,7 +94,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
                   if (barcodes.isNotEmpty) {
                     final code = barcodes.first.rawValue;
 
-                    // ✅ Prevent duplicate calls if the same code is being scanned repeatedly
+                    // ✅ Prevent duplicate calls
                     if (code != null && code != scannedCode) {
                       print("🔍 New barcode detected: $code");
                       setState(() {
@@ -113,71 +110,101 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
 
           // 📊 Result section
           Expanded(
-            flex: 1,
-            child: Center(
-              child: scannedCode == null
-                  ? Text(
-                "Point your camera at a barcode",
-                style: AppTextStyles.instruction,
-              )
-                  : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Scanned Code:",
-                    style: AppTextStyles.heading,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    scannedCode!,
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 20,
-                      color: AppColors.scanner,
+            flex: 2,
+            child: SingleChildScrollView( // ✅ Fixes overflow issues
+              padding: const EdgeInsets.all(12),
+              child: Center(
+                child: scannedCode == null
+                    ? Text(
+                  "Point your camera at a barcode",
+                  style: AppTextStyles.instruction,
+                )
+                    : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Scanned Code:",
+                      style: AppTextStyles.heading,
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    Text(
+                      scannedCode!,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 20,
+                        color: AppColors.scanner,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                  // ✅ Loader or Product Info
-                  isLoading
-                      ? const CircularProgressIndicator()
-                      : errorMessage != null
-                      ? Text(
-                    errorMessage!,
-                    style: AppTextStyles.body.copyWith(
-                      color: Colors.red,
-                    ),
-                  )
-                      : Column(
-                    children: [
-                      if (productName != null)
+                    // ✅ Loader or Product Info
+                    if (isLoading)
+                      const CircularProgressIndicator()
+                    else if (errorMessage != null)
+                      Text(
+                        errorMessage!,
+                        style: AppTextStyles.body.copyWith(
+                          color: Colors.red,
+                        ),
+                      )
+                    else if (productData != null) ...[
+                        // ✅ Show product image if exists
+                        if (productData!['image_url'] != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              productData!['image_url'],
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        else
+                          Container(
+                            height: 120,
+                            width: 120,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image_not_supported,
+                                size: 40, color: Colors.grey),
+                          ),
+
+                        const SizedBox(height: 12),
+
+                        // ✅ Product name & brand
                         Text(
-                          productName!,
+                          productData!['name'] ?? "Unnamed Product",
                           style: AppTextStyles.body.copyWith(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      if (productBrand != null)
                         Text(
-                          productBrand!,
+                          productData!['brand'] ?? "Unknown Brand",
                           style: AppTextStyles.body,
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                        const SizedBox(height: 10),
 
-                  // ✅ Reset Scan Button
-                  ElevatedButton(
-                    style: AppButtons.secondaryButton,
-                    onPressed: () => setState(() {
-                      scannedCode = null;
-                      productName = null;
-                      productBrand = null;
-                      errorMessage = null;
-                    }),
-                    child: const Text("Scan Again"),
-                  ),
-                ],
+                        // ✅ Ingredients if available
+                        if (productData!['ingredients'] != null)
+                          Text(
+                            "📝 Ingredients: ${productData!['ingredients']}",
+                            style: AppTextStyles.body.copyWith(fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                      ],
+
+                    const SizedBox(height: 16),
+
+                    // ✅ Reset Scan Button
+                    ElevatedButton(
+                      style: AppButtons.secondaryButton,
+                      onPressed: () => setState(() {
+                        scannedCode = null;
+                        productData = null;
+                        errorMessage = null;
+                      }),
+                      child: const Text("Scan Again"),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
