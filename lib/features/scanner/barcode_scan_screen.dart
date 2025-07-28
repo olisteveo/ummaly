@@ -21,11 +21,32 @@ class BarcodeScanScreen extends StatefulWidget {
   State<BarcodeScanScreen> createState() => _BarcodeScanScreenState();
 }
 
-class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
+class _BarcodeScanScreenState extends State<BarcodeScanScreen>
+    with SingleTickerProviderStateMixin {
   String? scannedCode;
   Map<String, dynamic>? productData; // ✅ Hold all product details
   bool isLoading = false;
   String? errorMessage;
+
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Pulse animation for scan box
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+      lowerBound: 0.9,
+      upperBound: 1.1,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   /// ✅ Call Node.js backend with scanned barcode
   Future<void> fetchProductFromBackend(String barcode) async {
@@ -69,6 +90,18 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
     }
   }
 
+  /// ✅ Helper to get badge color based on halal status
+  Color _getHalalStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case "halal":
+        return Colors.green;
+      case "haram":
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,137 +110,191 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
         title: const Text("Scan Product"),
         backgroundColor: AppColors.scanner,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // 📸 Camera viewfinder
-          Expanded(
-            flex: 3,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              child: MobileScanner(
-                fit: BoxFit.cover,
-                onDetect: (capture) {
-                  final barcodes = capture.barcodes;
-                  if (barcodes.isNotEmpty) {
-                    final code = barcodes.first.rawValue;
+          // 📸 Camera view
+          MobileScanner(
+            fit: BoxFit.cover,
+            onDetect: (capture) {
+              final barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty) {
+                final code = barcodes.first.rawValue;
 
-                    // ✅ Prevent duplicate calls
-                    if (code != null && code != scannedCode) {
-                      print("🔍 New barcode detected: $code");
-                      setState(() {
-                        scannedCode = code;
-                      });
-                      fetchProductFromBackend(code);
-                    }
-                  }
-                },
-              ),
-            ),
+                // ✅ Prevent duplicate calls
+                if (code != null && code != scannedCode) {
+                  print("🔍 New barcode detected: $code");
+                  setState(() {
+                    scannedCode = code;
+                  });
+                  fetchProductFromBackend(code);
+                }
+              }
+            },
           ),
 
-          // 📊 Result section
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView( // ✅ Fixes overflow issues
-              padding: const EdgeInsets.all(12),
-              child: Center(
-                child: scannedCode == null
-                    ? Text(
-                  "Point your camera at a barcode",
-                  style: AppTextStyles.instruction,
-                )
-                    : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Scanned Code:",
-                      style: AppTextStyles.heading,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      scannedCode!,
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 20,
-                        color: AppColors.scanner,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ✅ Loader or Product Info
-                    if (isLoading)
-                      const CircularProgressIndicator()
-                    else if (errorMessage != null)
-                      Text(
-                        errorMessage!,
-                        style: AppTextStyles.body.copyWith(
-                          color: Colors.red,
-                        ),
-                      )
-                    else if (productData != null) ...[
-                        // ✅ Show product image if exists
-                        if (productData!['image_url'] != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              productData!['image_url'],
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 120,
-                            width: 120,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.image_not_supported,
-                                size: 40, color: Colors.grey),
-                          ),
-
-                        const SizedBox(height: 12),
-
-                        // ✅ Product name & brand
-                        Text(
-                          productData!['name'] ?? "Unnamed Product",
-                          style: AppTextStyles.body.copyWith(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          productData!['brand'] ?? "Unknown Brand",
-                          style: AppTextStyles.body,
-                        ),
-                        const SizedBox(height: 10),
-
-                        // ✅ Ingredients if available
-                        if (productData!['ingredients'] != null)
-                          Text(
-                            "📝 Ingredients: ${productData!['ingredients']}",
-                            style: AppTextStyles.body.copyWith(fontSize: 14),
-                            textAlign: TextAlign.center,
-                          ),
-                      ],
-
-                    const SizedBox(height: 16),
-
-                    // ✅ Reset Scan Button
-                    ElevatedButton(
-                      style: AppButtons.secondaryButton,
-                      onPressed: () => setState(() {
-                        scannedCode = null;
-                        productData = null;
-                        errorMessage = null;
-                      }),
-                      child: const Text("Scan Again"),
-                    ),
-                  ],
+          // ✅ Animated Guide Box Overlay
+          Center(
+            child: ScaleTransition(
+              scale: _pulseController,
+              child: Container(
+                width: 250,
+                height: 150,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.green, width: 3),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
           ),
+
+          // ✅ Persistent Footer: “Scan barcode”
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: Colors.black.withOpacity(0.5),
+              padding: const EdgeInsets.all(12),
+              child: const Text(
+                "📷 Align barcode inside the box to scan",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+
+          // 📊 Overlay (Product Info / Loading / Error)
+          if (isLoading || errorMessage != null || productData != null)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.7),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isLoading) ...[
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 12),
+                            const Text("Fetching product details..."),
+                          ] else if (errorMessage != null) ...[
+                            Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ] else if (productData != null) ...[
+                            // ✅ Product Image
+                            if (productData!['image_url'] != null)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  productData!['image_url'],
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 150,
+                                width: 150,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported,
+                                    size: 50, color: Colors.grey),
+                              ),
+
+                            const SizedBox(height: 12),
+
+                            // ✅ Product Name & Brand
+                            Text(
+                              productData!['name'] ?? "Unnamed Product",
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (productData!['brand'] != null)
+                              Text(
+                                productData!['brand'],
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.black54),
+                              ),
+
+                            const SizedBox(height: 10),
+
+                            // ✅ Halal Status: Label + Badge
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  "Halal Status: ",
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: _getHalalStatusColor(
+                                        productData!['halal_status']),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    productData!['halal_status']
+                                        ?.toString()
+                                        .toUpperCase() ??
+                                        "UNKNOWN",
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // ✅ Ingredients
+                            if (productData!['ingredients'] != null)
+                              Text(
+                                "📝 Ingredients: ${productData!['ingredients']}",
+                                style: const TextStyle(fontSize: 14),
+                                textAlign: TextAlign.center,
+                              ),
+                          ],
+
+                          const SizedBox(height: 20),
+
+                          // ✅ Scan Again Button
+                          ElevatedButton(
+                            style: AppButtons.secondaryButton,
+                            onPressed: () => setState(() {
+                              scannedCode = null;
+                              productData = null;
+                              errorMessage = null;
+                            }),
+                            child: const Text("Scan Again"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
