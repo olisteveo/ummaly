@@ -274,6 +274,52 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                                 style: const TextStyle(fontSize: 14),
                                 textAlign: TextAlign.center,
                               ),
+
+                            const SizedBox(height: 12),
+
+                            // ✅ NEW: Halal Matches Section
+                            if (productData!['halal_matches'] != null &&
+                                (productData!['halal_matches'] as List).isNotEmpty)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "🚩 Ingredients of Concern:",
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ...List.generate(
+                                    (productData!['halal_matches'] as List).length,
+                                        (index) {
+                                      final match =
+                                      productData!['halal_matches'][index];
+                                      return Padding(
+                                        padding:
+                                        const EdgeInsets.symmetric(vertical: 4.0),
+                                        child: Text(
+                                          "• ${match['name']} (${match['status'].toUpperCase()}) – ${match['notes']}",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: match['status'] == 'haram'
+                                                ? Colors.red
+                                                : (match['status'] == 'conditional'
+                                                ? Colors.orange
+                                                : Colors.green),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              )
+                            else
+                              const Text(
+                                "✅ No flagged ingredients found",
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.green),
+                              ),
                           ],
 
                           const SizedBox(height: 20),
