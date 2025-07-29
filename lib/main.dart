@@ -22,6 +22,9 @@ import 'package:easy_localization/easy_localization.dart';
 // LocaleManager handles language detection, loading, and saving
 import 'package:ummaly/core/locale/locale_manager.dart';
 
+// ✅ Keeping PingService import for future use (but no call in main)
+import 'package:ummaly/core/services/ping_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -35,6 +38,9 @@ void main() async {
 
   // Initialize locale manager (handles device/user language logic)
   await LocaleManager().init();
+
+  // 🚨 REMOVED the blocking PingService call here
+  // PingService().testPing(); will now be moved to AuthGate/initState instead.
 
   // Launch the app with localization support
   runApp(

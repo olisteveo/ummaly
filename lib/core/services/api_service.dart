@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../config/config.dart'; // ✅ Import AppConfig for dynamic baseUrl
 
 class ApiService {
-  static const String baseUrl = "http://10.0.2.2:5000"; // Android emulator
-
+  /// Scans a barcode by sending it to the backend.
+  /// Returns the product map if found, otherwise `null`.
   static Future<Map<String, dynamic>?> scanBarcode(String barcode) async {
-    final url = Uri.parse('$baseUrl/scan');
+    final url = Uri.parse(AppConfig.scanEndpoint); // ✅ Uses AppConfig
 
     try {
       final response = await http.post(

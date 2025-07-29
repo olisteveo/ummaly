@@ -57,7 +57,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     if (product != null) {
       print("✅ [UI] Product loaded: ${product.name}");
       setState(() {
-        productData = product.toJson();  // ✅ Clean: includes halal_matches automatically
+        productData = product.toJson();  // ✅ Will include halal_matches, notes, confidence now
       });
     } else {
       print("❌ [UI] Failed to fetch product");
@@ -99,7 +99,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           MobileScanner(
             fit: BoxFit.cover,
             onDetect: (capture) {
-              if (isScannerPaused) return; // ✅ Don’t scan while paused
+              if (isScannerPaused) return;
               final barcodes = capture.barcodes;
               if (barcodes.isNotEmpty) {
                 final code = barcodes.first.rawValue;
@@ -108,7 +108,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                   print("🔍 [UI] Detected new barcode: $code");
                   setState(() {
                     scannedCode = code;
-                    isScannerPaused = true; // ✅ Stop scanner while loading card
+                    isScannerPaused = true;
                   });
                   _handleScan(code);
                 }
@@ -251,6 +251,36 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                               ],
                             ),
 
+                            /// ✅ Confidence score
+                            if (productData!['confidence'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  "Confidence: ${(productData!['confidence'] * 100).toStringAsFixed(1)}%",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.blueGrey,
+                                  ),
+                                ),
+                              ),
+
+                            /// ✅ Summary notes
+                            if (productData!['notes'] != null &&
+                                productData!['notes'].toString().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                    top: 4.0, left: 12.0, right: 12.0),
+                                child: Text(
+                                  productData!['notes'],
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.black87,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+
                             const SizedBox(height: 10),
 
                             /// ✅ Ingredients
@@ -269,7 +299,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    "🚩 Flagged by Name/Ingredients:",
+                                    "🚩 Flagged Ingredients & Terms:",
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold),
