@@ -29,13 +29,18 @@ Ummaly addresses the lack of a reliable, unified source for halal verification. 
 
 ## Tech Stack
 
-| Layer         | Stack                         |
-|---------------|-------------------------------|
-| Frontend      | Flutter (Dart)                |
-| Backend       | Node.js (Express)             |
-| Database      | PostgreSQL or MongoDB         |
-| Authentication & Payments | Firebase Auth, Stripe API        |
-| Developer Tools | Android Studio (frontend), VS Code (backend) |
+| Layer                  | Stack                                                           |
+|------------------------|-----------------------------------------------------------------|
+| **Frontend**           | Flutter (Dart) – built for Android & iOS                       |
+| **Backend**            | Node.js (Express)                                              |
+| **Database**           | PostgreSQL (Neon) with Prisma ORM                              |
+| **Authentication**     | Firebase Authentication (email/password, password reset, email verification) |
+| **Payments**           | Stripe API (planned)                                           |
+| **Cloud Functions**    | Firebase Admin SDK (token verification, future server tasks)   |
+| **APIs & Integrations**| Open Food Facts API (product data), future halal certification APIs |
+| **Developer Tools**    | Android Studio (Flutter frontend), VS Code (Node.js backend), GitHub (version control) |
+| **Hosting/Infra**      | Local dev server for backend (moving to cloud later)           |
+
 
 ---
 
