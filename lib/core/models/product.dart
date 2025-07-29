@@ -9,12 +9,22 @@ class HalalMatch {
     required this.notes,
   });
 
+  /// ✅ Create HalalMatch object from JSON
   factory HalalMatch.fromJson(Map<String, dynamic> json) {
     return HalalMatch(
       name: json['name'] ?? '',
       status: json['status'] ?? '',
       notes: json['notes'] ?? '',
     );
+  }
+
+  /// ✅ Convert HalalMatch object back to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'status': status,
+      'notes': notes,
+    };
   }
 }
 
@@ -37,6 +47,7 @@ class Product {
     required this.halalMatches,
   });
 
+  /// ✅ Create Product object from JSON
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       barcode: json['barcode'] ?? '',
@@ -49,5 +60,18 @@ class Product {
           .map((match) => HalalMatch.fromJson(match))
           .toList(),
     );
+  }
+
+  /// ✅ Convert Product object back to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'barcode': barcode,
+      'name': name,
+      'brand': brand,
+      'ingredients': ingredients,
+      'image_url': imageUrl,
+      'halal_status': halalStatus,
+      'halal_matches': halalMatches.map((match) => match.toJson()).toList(),
+    };
   }
 }

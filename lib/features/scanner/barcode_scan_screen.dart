@@ -1,18 +1,8 @@
-import 'dart:convert';
-import 'dart:io'; // ✅ Needed for Platform check
+import 'dart:io'; // ✅ For platform check
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:ummaly/core/services/scan_service.dart';
 import 'package:ummaly/theme/styles.dart';
-
-/// ✅ Detect whether running on emulator or real device and choose correct base URL
-String getBaseUrl() {
-  if (Platform.isAndroid) {
-    return "http://192.168.0.3:5000"; // ✅ Real device uses local IP
-  } else {
-    return "http://10.0.2.2:5000"; // ✅ Emulator uses 10.0.2.2
-  }
-}
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({Key? key}) : super(key: key);
@@ -23,9 +13,12 @@ class BarcodeScanScreen extends StatefulWidget {
 
 class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with SingleTickerProviderStateMixin {
+  final ScanService _scanService = ScanService();
+
   String? scannedCode;
-  Map<String, dynamic>? productData; // ✅ Hold all product details
+  Map<String, dynamic>? productData; // ✅ Holds product details
   bool isLoading = false;
+  bool isScannerPaused = false; // ✅ Pauses scanning while showing a product
   String? errorMessage;
 
   late AnimationController _pulseController;
@@ -33,7 +26,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   @override
   void initState() {
     super.initState();
-    // ✅ Pulse animation for scan box
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -48,55 +40,46 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     super.dispose();
   }
 
-  /// ✅ Call Node.js backend with scanned barcode
-  Future<void> fetchProductFromBackend(String barcode) async {
-    print("📤 Sending barcode $barcode to backend...");
+  /// ✅ Uses ScanService to fetch product details (debounced)
+  Future<void> _handleScan(String barcode) async {
+    print("📤 [UI] Sending barcode to ScanService: $barcode");
+
     setState(() {
       isLoading = true;
       productData = null;
       errorMessage = null;
     });
 
-    try {
-      final response = await http.post(
-        Uri.parse("${getBaseUrl()}/scan"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"barcode": barcode}),
-      );
+    final product = await _scanService.scanProduct(barcode);
 
-      print("📥 Response status: ${response.statusCode}");
+    if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("✅ Product from backend: ${data['product']['name']}");
-        setState(() {
-          productData = data['product']; // ✅ Save full product object
-        });
-      } else {
-        print("❌ Backend returned ${response.statusCode}");
-        setState(() {
-          errorMessage = "❌ Product not found (status ${response.statusCode})";
-        });
-      }
-    } catch (e) {
-      print("⚠️ Error contacting backend: $e");
+    if (product != null) {
+      print("✅ [UI] Product loaded: ${product.name}");
       setState(() {
-        errorMessage = "⚠️ Error connecting to server";
+        productData = product.toJson();  // ✅ Clean: includes halal_matches automatically
       });
-    } finally {
+    } else {
+      print("❌ [UI] Failed to fetch product");
       setState(() {
-        isLoading = false;
+        errorMessage = "❌ Product not found or server error";
       });
     }
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
-  /// ✅ Helper to get badge color based on halal status
+  /// ✅ Badge colors for Halal/Haram/Unknown
   Color _getHalalStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case "halal":
         return Colors.green;
       case "haram":
         return Colors.red;
+      case "conditional":
+        return Colors.orange;
       default:
         return Colors.grey;
     }
@@ -112,27 +95,28 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       ),
       body: Stack(
         children: [
-          // 📸 Camera view
+          /// 📸 Camera view
           MobileScanner(
             fit: BoxFit.cover,
             onDetect: (capture) {
+              if (isScannerPaused) return; // ✅ Don’t scan while paused
               final barcodes = capture.barcodes;
               if (barcodes.isNotEmpty) {
                 final code = barcodes.first.rawValue;
 
-                // ✅ Prevent duplicate calls
                 if (code != null && code != scannedCode) {
-                  print("🔍 New barcode detected: $code");
+                  print("🔍 [UI] Detected new barcode: $code");
                   setState(() {
                     scannedCode = code;
+                    isScannerPaused = true; // ✅ Stop scanner while loading card
                   });
-                  fetchProductFromBackend(code);
+                  _handleScan(code);
                 }
               }
             },
           ),
 
-          // ✅ Animated Guide Box Overlay
+          /// ✅ Animated guide box overlay
           Center(
             child: ScaleTransition(
               scale: _pulseController,
@@ -147,7 +131,13 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             ),
           ),
 
-          // ✅ Persistent Footer: “Scan barcode”
+          /// ✅ Loading spinner overlay on the camera while fetching
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+
+          /// ✅ Footer with instructions
           Positioned(
             bottom: 0,
             left: 0,
@@ -163,8 +153,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             ),
           ),
 
-          // 📊 Overlay (Product Info / Loading / Error)
-          if (isLoading || errorMessage != null || productData != null)
+          /// 📊 Product or error card
+          if (!isLoading && (errorMessage != null || productData != null))
             Positioned.fill(
               child: Container(
                 color: Colors.black.withOpacity(0.7),
@@ -180,11 +170,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (isLoading) ...[
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 12),
-                            const Text("Fetching product details..."),
-                          ] else if (errorMessage != null) ...[
+                          if (errorMessage != null) ...[
                             Text(
                               errorMessage!,
                               style: const TextStyle(
@@ -195,7 +181,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                               textAlign: TextAlign.center,
                             ),
                           ] else if (productData != null) ...[
-                            // ✅ Product Image
+                            /// ✅ Product image
                             if (productData!['image_url'] != null)
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
@@ -216,7 +202,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
                             const SizedBox(height: 12),
 
-                            // ✅ Product Name & Brand
+                            /// ✅ Product name & brand
                             Text(
                               productData!['name'] ?? "Unnamed Product",
                               style: const TextStyle(
@@ -234,7 +220,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
                             const SizedBox(height: 10),
 
-                            // ✅ Halal Status: Label + Badge
+                            /// ✅ Halal status badge
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -267,7 +253,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
                             const SizedBox(height: 10),
 
-                            // ✅ Ingredients
+                            /// ✅ Ingredients
                             if (productData!['ingredients'] != null)
                               Text(
                                 "📝 Ingredients: ${productData!['ingredients']}",
@@ -277,14 +263,13 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
                             const SizedBox(height: 12),
 
-                            // ✅ NEW: Halal Matches Section
-                            if (productData!['halal_matches'] != null &&
-                                (productData!['halal_matches'] as List).isNotEmpty)
+                            /// ✅ Halal matches section
+                            if ((productData!['halal_matches'] as List).isNotEmpty)
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    "🚩 Ingredients of Concern:",
+                                    "🚩 Flagged by Name/Ingredients:",
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold),
@@ -296,15 +281,16 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                                       final match =
                                       productData!['halal_matches'][index];
                                       return Padding(
-                                        padding:
-                                        const EdgeInsets.symmetric(vertical: 4.0),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 4.0),
                                         child: Text(
                                           "• ${match['name']} (${match['status'].toUpperCase()}) – ${match['notes']}",
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: match['status'] == 'haram'
                                                 ? Colors.red
-                                                : (match['status'] == 'conditional'
+                                                : (match['status'] ==
+                                                'conditional'
                                                 ? Colors.orange
                                                 : Colors.green),
                                           ),
@@ -316,7 +302,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                               )
                             else
                               const Text(
-                                "✅ No flagged ingredients found",
+                                "✅ No flagged items found",
                                 style: TextStyle(
                                     fontSize: 14, color: Colors.green),
                               ),
@@ -324,13 +310,14 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
                           const SizedBox(height: 20),
 
-                          // ✅ Scan Again Button
+                          /// ✅ Scan Again button
                           ElevatedButton(
                             style: AppButtons.secondaryButton,
                             onPressed: () => setState(() {
                               scannedCode = null;
                               productData = null;
                               errorMessage = null;
+                              isScannerPaused = false; // ✅ Resume scanning
                             }),
                             child: const Text("Scan Again"),
                           ),
