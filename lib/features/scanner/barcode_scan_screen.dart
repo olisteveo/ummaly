@@ -15,9 +15,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with SingleTickerProviderStateMixin {
   final ScanService _scanService = ScanService();
 
-  // ✅ NEW: Camera controller for scanner & torch control
-  final MobileScannerController _cameraController = MobileScannerController();
-
   String? scannedCode;
   Map<String, dynamic>? productData; // ✅ Holds product details
   bool isLoading = false;
@@ -60,7 +57,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     if (product != null) {
       print("✅ [UI] Product loaded: ${product.name}");
       setState(() {
-        productData = product.toJson(); // ✅ Will include halal_matches, notes, confidence now
+        productData = product.toJson();  // ✅ Will include halal_matches, notes, confidence now
       });
     } else {
       print("❌ [UI] Failed to fetch product");
@@ -100,7 +97,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         children: [
           /// 📸 Camera view
           MobileScanner(
-            controller: _cameraController, // ✅ Controller added
             fit: BoxFit.cover,
             onDetect: (capture) {
               if (isScannerPaused) return;
@@ -118,26 +114,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                 }
               }
             },
-          ),
-
-          /// 🔦 Torch toggle button (top-right)
-          Positioned(
-            top: 20,
-            right: 20,
-            child: ValueListenableBuilder<TorchState>(
-              valueListenable: _cameraController.torchState,
-              builder: (context, state, child) {
-                final isTorchOn = state == TorchState.on;
-                return IconButton(
-                  icon: Icon(
-                    isTorchOn ? Icons.flash_on : Icons.flash_off,
-                    color: isTorchOn ? Colors.yellow : Colors.white,
-                    size: 30,
-                  ),
-                  onPressed: () => _cameraController.toggleTorch(),
-                );
-              },
-            ),
           ),
 
           /// ✅ Animated guide box overlay
@@ -330,8 +306,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                                   ),
                                   const SizedBox(height: 6),
                                   ...List.generate(
-                                    (productData!['halal_matches'] as List)
-                                        .length,
+                                    (productData!['halal_matches'] as List).length,
                                         (index) {
                                       final match =
                                       productData!['halal_matches'][index];
