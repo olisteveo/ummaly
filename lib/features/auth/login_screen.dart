@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ummaly/features/home/home_screen.dart';
 import 'package:ummaly/features/auth/register_screen.dart';
-import 'package:ummaly/theme/styles.dart'; // Use shared colors, text, and button styles
+import 'package:ummaly/features/auth/auth_service.dart'; // ✅ use new AuthService
+import 'package:ummaly/theme/styles.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,24 +15,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  String errorMessage = '';
+  final AuthService _authService = AuthService();
 
-  // Firebase email/password login
+  String errorMessage = '';
+  bool isLoading = false;
+
+  /// ✅ Handles full login flow: Firebase + backend
   Future<void> signIn() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+      // ✅ Call loginUser from AuthService
+      await _authService.loginUser(
+        emailController.text.trim(),
+        passwordController.text.trim(),
       );
 
-      // If successful, replace login screen with home
+      // ✅ If successful, replace login screen with Home
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
+      // ✅ Clean up error string (remove “Exception:” wrapper)
       setState(() {
-        errorMessage = e.message ?? 'Login failed';
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isLoading = false;
       });
     }
   }
@@ -46,16 +57,16 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Error message section using shared error text style
+            // ✅ Error message using shared style
             if (errorMessage.isNotEmpty)
               Text(
                 errorMessage,
-                style: AppTextStyles.error, // replaced inline red TextStyle
+                style: AppTextStyles.error,
               ),
 
             const SizedBox(height: 10),
 
-            // Email field
+            // ✅ Email field
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: "Email"),
@@ -64,14 +75,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 10),
 
-            // Password field
+            // ✅ Password field
             TextField(
               controller: passwordController,
               decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
 
-            // Forgot password link
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
@@ -84,19 +94,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 20),
 
-            // Login button using shared primary style
+            // ✅ Login button (shows loader when signing in)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: AppButtons.primaryButton, // applied global style
-                onPressed: signIn,
-                child: const Text("Login"),
+                style: AppButtons.primaryButton,
+                onPressed: isLoading ? null : signIn,
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Login"),
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // Navigate to register screen
+            // ✅ Link to register screen
             Center(
               child: TextButton(
                 onPressed: () {
