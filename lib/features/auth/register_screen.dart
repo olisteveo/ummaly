@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
-import 'package:ummaly/theme/styles.dart'; // Import shared styles
+import 'package:ummaly/theme/styles.dart';
+import 'package:ummaly/features/auth/auth_service.dart'; // ✅ our new service
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,11 +16,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  final AuthService _authService = AuthService();
+
   String errorMessage = '';
   bool isLoading = false;
   bool emailSent = false;
   bool verifying = false;
 
+  /// ✅ Handles full registration flow: Firebase + Backend + email verification
   Future<void> register() async {
     setState(() {
       isLoading = true;
@@ -28,47 +31,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final UserCredential userCredential =
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+      // ✅ 1. Register user in Firebase + backend (via AuthService)
+      await _authService.registerUser(
+        nameController.text.trim(),
+        emailController.text.trim(),
+        passwordController.text.trim(),
       );
 
-      final user = userCredential.user;
-
-      if (user != null) {
-        // Create user document in Firestore
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'name': nameController.text.trim(),
-          'email': emailController.text.trim(),
-          'role_id': 'user',
-          'language_preference': 'en',
-          'created_at': Timestamp.now(),
-          'updated_at': Timestamp.now(),
-          'email_verified': false,
-        });
-
+      // ✅ 2. Send email verification
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
         await user.sendEmailVerification();
-
-        setState(() {
-          emailSent = true;
-          isLoading = false;
-        });
       }
-    } on FirebaseAuthException catch (e) {
+
       setState(() {
-        errorMessage = e.message ?? 'Registration failed';
+        emailSent = true;
         isLoading = false;
       });
     } catch (e) {
+      // ✅ Clean up error message so it’s not wrapped in “Exception:”
       setState(() {
-        errorMessage = 'An unexpected error occurred';
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
       });
     }
   }
 
-  Future<void> checkEmailVerifiedAndWriteToFirestore() async {
+  /// ✅ Checks if email has been verified
+  Future<void> checkEmailVerified() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -81,24 +71,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final refreshedUser = FirebaseAuth.instance.currentUser;
 
     if (refreshedUser != null && refreshedUser.emailVerified) {
-      try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(refreshedUser.uid)
-            .update({
-          'email_verified': true,
-          'updated_at': Timestamp.now(),
-        });
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      } catch (e) {
-        setState(() {
-          errorMessage = 'Failed to update Firestore after verification.';
-        });
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
     } else {
       setState(() {
         errorMessage = 'Please verify your email before continuing.';
@@ -125,14 +101,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Registration form UI
+  // ✅ Registration form UI
   Widget _buildRegistrationForm() {
     return Column(
       children: [
         if (errorMessage.isNotEmpty)
           Text(
             errorMessage,
-            style: AppTextStyles.error, // replaced inline red text style
+            style: AppTextStyles.error,
           ),
         TextField(
           controller: nameController,
@@ -149,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 20),
         ElevatedButton(
-          style: AppButtons.primaryButton, // use shared primary button style
+          style: AppButtons.primaryButton,
           onPressed: register,
           child: const Text("Register"),
         ),
@@ -166,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Email verification UI after registration
+  // ✅ Email verification UI
   Widget _buildEmailVerificationPrompt() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -176,7 +152,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           'Verification email sent!',
           style: AppTextStyles.heading.copyWith(fontSize: 20),
-          // replaced inline TextStyle(fontSize: 20)
         ),
         const SizedBox(height: 8),
         const Text('Please check your inbox and verify your email.'),
@@ -184,11 +159,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (errorMessage.isNotEmpty)
           Text(
             errorMessage,
-            style: AppTextStyles.error, // replaced inline red text style
+            style: AppTextStyles.error,
           ),
         ElevatedButton(
-          style: AppButtons.primaryButton, // consistent button styling
-          onPressed: verifying ? null : checkEmailVerifiedAndWriteToFirestore,
+          style: AppButtons.primaryButton,
+          onPressed: verifying ? null : checkEmailVerified,
           child: verifying
               ? const CircularProgressIndicator()
               : const Text("I have verified my email"),

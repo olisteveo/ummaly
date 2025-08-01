@@ -1,9 +1,10 @@
 // Copyright © 2025 Oliver & Haidar. All rights reserved.
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart' as painting;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'package:ummaly/features/home/home_screen.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
 import 'package:ummaly/core/widgets/snackbar_helper.dart';
@@ -25,10 +26,10 @@ class _AuthGateState extends State<AuthGate> {
     _initUserFuture = _prepareUserAndLocale();
   }
 
-  /// Handles logic for:
-  /// - Checking if a user is logged in and verified
-  /// - Resetting language to English on logout or unverified user
-  /// - Applying saved language on login
+  /// ✅ Handles logic for:
+  /// - Checking if user is logged in + email verified
+  /// - Pulling language from backend Neon DB
+  /// - Resetting language to English on logout or failure
   Future<User?> _prepareUserAndLocale() async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -38,14 +39,15 @@ class _AuthGateState extends State<AuthGate> {
       return null;
     }
 
-    // 🔁 Refresh user in case verification was done just now
+    // 🔁 Refresh user (ensures emailVerified status is up to date)
     await user.reload();
     final refreshedUser = FirebaseAuth.instance.currentUser;
 
-    // ❌ If not verified, sign them out and revert to English
+    // ❌ If not verified, sign out + revert to English
     if (refreshedUser == null || !refreshedUser.emailVerified) {
       await FirebaseAuth.instance.signOut();
       await context.setLocale(const Locale('en'));
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         SnackbarHelper.show(
           context,
@@ -53,24 +55,41 @@ class _AuthGateState extends State<AuthGate> {
           backgroundColor: Colors.orange,
         );
       });
+
       return null;
     }
 
-    // ✅ Verified: apply saved language
-    final langCode = await _getUserLanguage(user.uid);
-    if (langCode != null) {
-      await context.setLocale(Locale(langCode));
-    }
+    // ✅ If verified, fetch user language from backend Neon DB
+    final langCode = await _getUserLanguageFromBackend(refreshedUser);
+    await context.setLocale(Locale(langCode));
 
-    return user;
+    return refreshedUser;
   }
 
-  /// Fetches the user's saved language preference from Firestore
-  Future<String?> _getUserLanguage(String uid) async {
+  /// ✅ Calls backend `/firebase-login` to pull user info (including language)
+  Future<String> _getUserLanguageFromBackend(User firebaseUser) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      return doc.data()?['language_preference'] ?? 'en';
-    } catch (_) {
+      // ✅ Get Firebase ID token for secure backend call
+      final idToken = await firebaseUser.getIdToken();
+
+      // ✅ Call backend to retrieve Neon DB user details
+      final response = await http.post(
+        Uri.parse("http://10.0.2.2:5000/api/auth/firebase-login"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $idToken",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['language_preference'] ?? 'en';
+      } else {
+        print("⚠️ Backend returned error: ${response.body}");
+        return 'en';
+      }
+    } catch (e) {
+      print("⚠️ Error fetching language: $e");
       return 'en';
     }
   }
@@ -80,7 +99,7 @@ class _AuthGateState extends State<AuthGate> {
     return FutureBuilder<User?>(
       future: _initUserFuture,
       builder: (context, snapshot) {
-        // ⏳ Still loading user and language data
+        // ⏳ Still loading user + language preference
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -97,7 +116,7 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        // 🏠 Logged in and verified — proceed to home screen
+        // 🏠 Logged in + verified — go to home screen
         return const HomeScreen();
       },
     );
