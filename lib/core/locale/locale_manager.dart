@@ -15,9 +15,11 @@ class LocaleManager {
   Locale _currentLocale = const Locale('en');
   Locale get currentLocale => _currentLocale;
 
-  /// Call this during app startup BEFORE runApp()
+  /// ✅ Call this during app startup AFTER Firebase.initializeApp()
   /// Loads saved user locale if logged in, otherwise uses device locale.
   Future<void> init() async {
+    // 🔥 REMOVED duplicate Firebase.initializeApp()
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await _loadLocaleFromFirestore(user.uid);

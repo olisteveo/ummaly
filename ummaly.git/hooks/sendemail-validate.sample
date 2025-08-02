@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# An example hook script to validate a patch (and/or patch series) before
+# An app hook script to validate a patch (and/or patch series) before
 # sending it via email.
 #
 # The hook should exit with non-zero status after issuing an appropriate

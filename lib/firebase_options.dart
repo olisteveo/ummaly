@@ -50,9 +50,9 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyCj2_WaglG2mJdmzl1Mxrw4nMPDrNcvvWc',
     appId: '1:116981186736:web:4a25a39a75d4f61861fb75',
     messagingSenderId: '116981186736',
-    projectId: 'ummaly-c201b',
-    authDomain: 'ummaly-c201b.firebaseapp.com',
-    storageBucket: 'ummaly-c201b.firebasestorage.app',
+    projectId: 'app-c201b',
+    authDomain: 'app-c201b.firebaseapp.com',
+    storageBucket: 'app-c201b.firebasestorage.app',
     measurementId: 'G-06EQ283Q3T',
   );
 
@@ -60,16 +60,16 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDKnbgDATsyI7jKnZFEg3_j3JeElG6JQyg',
     appId: '1:116981186736:android:6bacd15b204ca74961fb75',
     messagingSenderId: '116981186736',
-    projectId: 'ummaly-c201b',
-    storageBucket: 'ummaly-c201b.firebasestorage.app',
+    projectId: 'app-c201b',
+    storageBucket: 'app-c201b.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBoEMZ5q-XdFdT91ARfSnAyi-wpOAnZA0U',
     appId: '1:116981186736:ios:67cc78f33c5c4a0c61fb75',
     messagingSenderId: '116981186736',
-    projectId: 'ummaly-c201b',
-    storageBucket: 'ummaly-c201b.firebasestorage.app',
-    iosBundleId: 'com.ummaly.ummaly',
+    projectId: 'app-c201b',
+    storageBucket: 'app-c201b.firebasestorage.app',
+    iosBundleId: 'com.app.app',
   );
 }
