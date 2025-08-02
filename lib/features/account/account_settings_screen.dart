@@ -7,7 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ummaly/core/locale/locale_manager.dart';
-import 'package:ummaly/theme/styles.dart'; // Import the shared styles file
+import 'package:ummaly/theme/styles.dart'; // ✅ Shared styles
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({Key? key}) : super(key: key);
@@ -33,7 +33,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _loadUserData();
   }
 
-  // Load the current user's data from Firestore into the form fields
+  /// ✅ Load the current user's data into the fields
   Future<void> _loadUserData() async {
     final User? user = _auth.currentUser;
     if (user == null) return;
@@ -43,13 +43,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       final data = userDoc.data() as Map<String, dynamic>;
       _nameController.text = data['name'] ?? '';
       _emailController.text = data['email'] ?? '';
-      _selectedLanguageCode = data['language_preference'] ?? context.locale.languageCode;
+      _selectedLanguageCode =
+          data['language_preference'] ?? context.locale.languageCode;
       _passwordController.clear();
       setState(() {});
     }
   }
 
-  // Save updated account details including name, email, and language preference
+  /// ✅ Save updated name, email & language
   Future<void> _saveChanges() async {
     final User? user = _auth.currentUser;
     if (user == null) return;
@@ -59,7 +60,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final updatedLang = _selectedLanguageCode;
     final password = _passwordController.text;
 
-    // Require password for verification before making changes
     if (password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('enter_current_password'.tr())),
@@ -70,19 +70,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Re-authenticate user before updating sensitive data
+      // ✅ Step 1: Re-authenticate the user
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: password,
       );
       await user.reauthenticateWithCredential(credential);
 
-      // Update email in Firebase Auth if changed
+      // ✅ Step 2: Update email via FirebaseAuth.instance (sends verification email)
       if (updatedEmail != user.email) {
-        await user.updateEmail(updatedEmail);
+        await FirebaseAuth.instance.currentUser
+            ?.verifyBeforeUpdateEmail(updatedEmail);
       }
 
-      // Update Firestore user document
+      // ✅ Step 3: Update Firestore document
       await _firestore.collection('users').doc(user.uid).update({
         'name': updatedName,
         'email': updatedEmail,
@@ -90,7 +91,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
-      // Update language preference in the app if changed
+      // ✅ Step 4: Apply new language instantly
       if (updatedLang != null && context.locale.languageCode != updatedLang) {
         await LocaleManager().updateUserLocale(updatedLang);
         if (mounted) {
@@ -101,6 +102,19 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('account_updated_success'.tr())),
       );
+    } on FirebaseAuthException catch (e) {
+      String errorMsg;
+      if (e.code == 'requires-recent-login') {
+        errorMsg = 'Please log out and log in again before changing email.';
+      } else if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
+        errorMsg = 'Your current password is incorrect.';
+      } else if (e.code == 'email-already-in-use') {
+        errorMsg = 'That email is already in use by another account.';
+      } else {
+        errorMsg = 'update_failed'.tr();
+      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMsg)));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('update_failed'.tr())),
@@ -110,7 +124,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     }
   }
 
-  // Permanently delete the user account from Firestore and Firebase Auth
+  /// ✅ Delete user account from Firestore & Firebase Auth
   Future<void> _deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -129,21 +143,21 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Name input field
+            // ✅ Name field
             TextFormField(
               controller: _nameController,
               decoration: InputDecoration(labelText: 'name'.tr()),
             ),
             const SizedBox(height: 16),
 
-            // Email input field
+            // ✅ Email field
             TextFormField(
               controller: _emailController,
               decoration: InputDecoration(labelText: 'email'.tr()),
             ),
             const SizedBox(height: 16),
 
-            // Language dropdown field
+            // ✅ Language dropdown
             DropdownButtonFormField<String>(
               value: _selectedLanguageCode,
               items: [
@@ -166,7 +180,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Password input field for reauthentication
+            // ✅ Password for reauthentication
             TextFormField(
               controller: _passwordController,
               obscureText: true,
@@ -174,7 +188,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             const SizedBox(height: 32),
 
-            // Update Account Button using shared primary style
+            // ✅ Save button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -185,7 +199,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Delete Account Button with shared error text style
+            // ✅ Delete account
             TextButton(
               onPressed: _deleteAccount,
               child: Text(

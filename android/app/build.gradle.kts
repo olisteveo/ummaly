@@ -1,17 +1,16 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // ✅ Google Services plugin for Firebase
+    id("com.google.gms.google-services")
+    // ✅ Flutter Gradle Plugin must be applied last
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Apply the Firebase Google Services plugin
-apply(plugin = "com.google.gms.google-services")
-
 android {
-    namespace = "com.ummaly.app"
+    namespace = "com.ummaly.app"   // ✅ MATCHES Firebase & Manifest
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "27.0.12077973"   // ✅ Ensures NDK version matches plugins
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -23,8 +22,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ummaly.app"
-        minSdk = 23
+        applicationId = "com.ummaly.app"   // ✅ MUST MATCH google-services.json
+        minSdk = 23                        // ✅ Needed for Firebase
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -32,6 +31,7 @@ android {
 
     buildTypes {
         release {
+            // ✅ Debug signing so flutter run --release works
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -40,3 +40,6 @@ android {
 flutter {
     source = "../.."
 }
+
+// ✅ Google Services must be applied AFTER everything else
+apply(plugin = "com.google.gms.google-services")

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# An example hook script to update a checked-out tree on a git push.
+# An app hook script to update a checked-out tree on a git push.
 #
 # This hook is invoked by git-receive-pack(1) when it reacts to git
 # push and updates reference(s) in its repository, and when the push
@@ -31,7 +31,7 @@ die () {
 # index to bring them to the desired state when the tip of the current
 # branch is updated to the new commit, and exit with a zero status.
 #
-# For example, the hook can simply run git read-tree -u -m HEAD "$1"
+# For app, the hook can simply run git read-tree -u -m HEAD "$1"
 # in order to emulate git fetch that is run in the reverse direction
 # with git push, as the two-tree form of git read-tree -u -m is
 # essentially the same as git switch or git checkout that switches

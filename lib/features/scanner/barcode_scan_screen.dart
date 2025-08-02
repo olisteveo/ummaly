@@ -1,9 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
+
 import 'package:ummaly/core/controllers/barcode_scan_controller.dart';
 import 'package:ummaly/features/scanner/widgets/product_card.dart';
 import 'package:ummaly/features/scanner/widgets/scanner_overlay.dart';
+import 'package:ummaly/features/scanner/scan_history_screen.dart';
 import 'package:ummaly/theme/styles.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
@@ -46,9 +51,26 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               title: const Text("Scan Product"),
               backgroundColor: AppColors.scanner,
               actions: [
-                /// Torch toggle button
+                /// ✅ History button
+                IconButton(
+                  icon: const Icon(Icons.history),
+                  tooltip: "View Scan History",
+                  onPressed: () {
+                    final String firebaseUid =
+                        FirebaseAuth.instance.currentUser?.uid ?? '';
+                    if (firebaseUid.isNotEmpty) {
+                      Get.to(() => ScanHistoryScreen(firebaseUid: firebaseUid));
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('You need to log in first')),
+                      );
+                    }
+                  },
+                ),
+
+                /// ✅ Torch toggle (using our manual torchState tracker)
                 ValueListenableBuilder<TorchState>(
-                  valueListenable: controller.cameraController.torchState,
+                  valueListenable: controller.torchState,
                   builder: (context, state, _) {
                     final isTorchOn = state == TorchState.on;
                     return IconButton(
@@ -64,29 +86,35 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             ),
             body: Stack(
               children: [
-                /// Camera view
+                /// ✅ Camera view
                 MobileScanner(
                   controller: controller.cameraController,
                   fit: BoxFit.cover,
-                  onDetect: (capture) {
+                  onDetect: (BarcodeCapture capture) {
                     if (controller.isScannerPaused) return;
-                    final code = capture.barcodes.first.rawValue;
-                    if (code != null && code != controller.scannedCode) {
-                      controller.handleScan(code);
+
+                    final List<Barcode> barcodes = capture.barcodes;
+                    final Uint8List? image = capture.image;
+
+                    if (barcodes.isNotEmpty) {
+                      final String? code = barcodes.first.rawValue;
+                      if (code != null && code != controller.scannedCode) {
+                        controller.handleScan(code);
+                      }
                     }
                   },
                 ),
 
-                /// Overlay (guide box + footer)
+                /// ✅ Overlay (guide box + footer)
                 ScannerOverlay(pulseController: _pulseController),
 
-                /// Loading spinner
+                /// ✅ Loading spinner
                 if (controller.isLoading)
                   const Center(
                     child: CircularProgressIndicator(color: Colors.white),
                   ),
 
-                /// Product card or error card
+                /// ✅ Product card or error card
                 ProductCard(
                   productData: controller.productData,
                   errorMessage: controller.errorMessage,
