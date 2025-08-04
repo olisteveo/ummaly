@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
 import 'package:ummaly/theme/styles.dart';
-import 'package:ummaly/features/auth/auth_service.dart'; // ✅ our new service
+import 'package:ummaly/features/auth/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,7 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool emailSent = false;
   bool verifying = false;
 
-  /// ✅ Handles full registration flow: Firebase + Backend + email verification
+  /// Handles full registration flow: Firebase + Backend + email verification
   Future<void> register() async {
     setState(() {
       isLoading = true;
@@ -31,14 +31,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // ✅ 1. Register user in Firebase + backend (via AuthService)
+      // Step 1: Register user in Firebase and backend via AuthService
       await _authService.registerUser(
         nameController.text.trim(),
         emailController.text.trim(),
         passwordController.text.trim(),
       );
 
-      // ✅ 2. Send email verification
+      // Step 2: Send email verification
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && !user.emailVerified) {
         await user.sendEmailVerification();
@@ -49,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         isLoading = false;
       });
     } catch (e) {
-      // ✅ Clean up error message so it’s not wrapped in “Exception:”
+      // Clean up error message so it’s not wrapped in “Exception:”
       setState(() {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
         isLoading = false;
@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  /// ✅ Checks if email has been verified
+  /// Checks if email has been verified
   Future<void> checkEmailVerified() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -71,6 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final refreshedUser = FirebaseAuth.instance.currentUser;
 
     if (refreshedUser != null && refreshedUser.emailVerified) {
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -101,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ✅ Registration form UI
+  // Registration form UI
   Widget _buildRegistrationForm() {
     return Column(
       children: [
@@ -142,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ✅ Email verification UI
+  // Email verification UI
   Widget _buildEmailVerificationPrompt() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

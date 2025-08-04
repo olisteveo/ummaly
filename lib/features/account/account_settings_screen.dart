@@ -2,12 +2,10 @@
 // This file is part of the Ummaly project and may not be reused,
 // modified, or distributed without express written permission.
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:ummaly/core/locale/locale_manager.dart';
-import 'package:ummaly/theme/styles.dart'; // ✅ Shared styles
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ummaly/core/widgets/account_form.dart';
+import 'package:ummaly/core/services/account_service.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({Key? key}) : super(key: key);
@@ -17,9 +15,6 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -27,187 +22,108 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   String? _selectedLanguageCode;
   bool _isLoading = false;
 
+  final AccountService _accountService = AccountService();
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
   }
 
-  /// ✅ Load the current user's data into the fields
+  /// Loads the current user's details (name, email, language) into the fields
   Future<void> _loadUserData() async {
-    final User? user = _auth.currentUser;
-    if (user == null) return;
+    setState(() => _isLoading = true);
 
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
-    if (userDoc.exists) {
-      final data = userDoc.data() as Map<String, dynamic>;
-      _nameController.text = data['name'] ?? '';
-      _emailController.text = data['email'] ?? '';
-      _selectedLanguageCode =
-          data['language_preference'] ?? context.locale.languageCode;
-      _passwordController.clear();
-      setState(() {});
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final data = await _accountService.getUserData(uid: user.uid);
+      if (data != null) {
+        _nameController.text = data['name'] ?? '';
+        _emailController.text = data['email'] ?? '';
+        _selectedLanguageCode = data['language_preference'] ?? 'en';
+      }
     }
+
+    setState(() => _isLoading = false);
   }
 
-  /// ✅ Save updated name, email & language
+  /// Handles saving updated account settings
   Future<void> _saveChanges() async {
-    final User? user = _auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    final updatedName = _nameController.text.trim();
-    final updatedEmail = _emailController.text.trim();
-    final updatedLang = _selectedLanguageCode;
-    final password = _passwordController.text;
-
-    if (password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('enter_current_password'.tr())),
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
-    try {
-      // ✅ Step 1: Re-authenticate the user
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: password,
-      );
-      await user.reauthenticateWithCredential(credential);
+    await _accountService.updateAccount(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      currentPassword: _passwordController.text.trim(), // ✅ Corrected
+      language: _selectedLanguageCode ?? 'en',
+    );
 
-      // ✅ Step 2: Update email via FirebaseAuth.instance (sends verification email)
-      if (updatedEmail != user.email) {
-        await FirebaseAuth.instance.currentUser
-            ?.verifyBeforeUpdateEmail(updatedEmail);
-      }
+    setState(() => _isLoading = false);
+  }
 
-      // ✅ Step 3: Update Firestore document
-      await _firestore.collection('users').doc(user.uid).update({
-        'name': updatedName,
-        'email': updatedEmail,
-        'language_preference': updatedLang,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+  /// Shows a confirmation dialog before deleting account
+  Future<void> _confirmDeleteAccount() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Delete Account'),
+          content: const Text(
+            'Are you sure you want to delete your account? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
 
-      // ✅ Step 4: Apply new language instantly
-      if (updatedLang != null && context.locale.languageCode != updatedLang) {
-        await LocaleManager().updateUserLocale(updatedLang);
-        if (mounted) {
-          context.setLocale(Locale(updatedLang));
-        }
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('account_updated_success'.tr())),
-      );
-    } on FirebaseAuthException catch (e) {
-      String errorMsg;
-      if (e.code == 'requires-recent-login') {
-        errorMsg = 'Please log out and log in again before changing email.';
-      } else if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
-        errorMsg = 'Your current password is incorrect.';
-      } else if (e.code == 'email-already-in-use') {
-        errorMsg = 'That email is already in use by another account.';
-      } else {
-        errorMsg = 'update_failed'.tr();
-      }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMsg)));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('update_failed'.tr())),
-      );
-    } finally {
-      setState(() => _isLoading = false);
+    if (shouldDelete == true) {
+      _deleteAccount();
     }
   }
 
-  /// ✅ Delete user account from Firestore & Firebase Auth
+  /// Handles account deletion
   Future<void> _deleteAccount() async {
-    final user = _auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    await _firestore.collection('users').doc(user.uid).delete();
-    await user.delete();
+    setState(() => _isLoading = true);
+    await _accountService.deleteAccount();
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('account_settings'.tr())),
-      body: _isLoading
+      appBar: AppBar(title: const Text('Account Settings')),
+      body: _isLoading && (_nameController.text.isEmpty)
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // ✅ Name field
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'name'.tr()),
-            ),
-            const SizedBox(height: 16),
-
-            // ✅ Email field
-            TextFormField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'email'.tr()),
-            ),
-            const SizedBox(height: 16),
-
-            // ✅ Language dropdown
-            DropdownButtonFormField<String>(
-              value: _selectedLanguageCode,
-              items: [
-                {'code': 'en', 'label': 'English'},
-                {'code': 'fr', 'label': 'Français'},
-                {'code': 'ar', 'label': 'العربية'},
-                {'code': 'ur', 'label': 'اردو'},
-              ]
-                  .map(
-                    (lang) => DropdownMenuItem(
-                  value: lang['code'],
-                  child: Text(lang['label']!),
-                ),
-              )
-                  .toList(),
-              onChanged: (val) {
-                setState(() => _selectedLanguageCode = val);
-              },
-              decoration: InputDecoration(labelText: 'language'.tr()),
-            ),
-            const SizedBox(height: 16),
-
-            // ✅ Password for reauthentication
-            TextFormField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(labelText: 'password'.tr()),
-            ),
-            const SizedBox(height: 32),
-
-            // ✅ Save button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: AppButtons.primaryButton,
-                onPressed: _saveChanges,
-                child: Text('update_account'.tr()),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ✅ Delete account
-            TextButton(
-              onPressed: _deleteAccount,
-              child: Text(
-                'delete_account'.tr(),
-                style: AppTextStyles.error,
-              ),
-            ),
-          ],
+          : AbsorbPointer(
+        absorbing: _isLoading, // Disables form fields while loading
+        child: AccountForm(
+          nameController: _nameController,
+          emailController: _emailController,
+          passwordController: _passwordController,
+          selectedLanguageCode: _selectedLanguageCode,
+          onLanguageChanged: (val) => setState(() {
+            _selectedLanguageCode = val;
+          }),
+          onSave: _saveChanges,
+          onDelete: _confirmDeleteAccount,
+          isLoading: _isLoading,
         ),
       ),
     );

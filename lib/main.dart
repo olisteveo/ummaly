@@ -6,7 +6,7 @@ import 'package:ummaly/features/auth/auth_gate.dart';
 import 'package:ummaly/features/auth/forgot_password.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ummaly/core/locale/locale_manager.dart';
-import 'package:flutter/services.dart'; // ✅ Added for orientation lock
+import 'package:flutter/services.dart'; // ✅ For portrait lock
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +16,7 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  // ✅ Safe Firebase init: will NOT re-init if another plugin already did
+  // ✅ Safe Firebase init
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
@@ -26,7 +26,6 @@ Future<void> main() async {
       Firebase.app();
     }
   } catch (e) {
-    // ✅ If it *still* complains about duplicate-app, just use the existing one
     print('⚠️ Firebase already initialized, using existing app.');
     Firebase.app();
   }
@@ -40,12 +39,9 @@ Future<void> main() async {
   runApp(
     EasyLocalization(
       supportedLocales: const [
-        Locale('en'),
-        Locale('fr'),
-        Locale('ar'),
-        Locale('ur'),
+        Locale('en'), // ✅ only preload English
       ],
-      path: 'assets/translations',
+      path: 'assets/translations', // ✅ only English here
       fallbackLocale: const Locale('en'),
       startLocale: LocaleManager().currentLocale,
       child: const MyApp(),
