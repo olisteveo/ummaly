@@ -26,24 +26,24 @@ class _AuthGateState extends State<AuthGate> {
     _initUserFuture = _prepareUserAndLocale();
   }
 
-  /// ✅ Handles logic for:
-  /// - Checking if user is logged in + email verified
+  /// Handles logic for:
+  /// - Checking if user is logged in and email verified
   /// - Pulling language from backend Neon DB
   /// - Resetting language to English on logout or failure
   Future<User?> _prepareUserAndLocale() async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      // 🟥 Not logged in — force app to LTR English
+      // User is not logged in — force app to LTR English
       await context.setLocale(const Locale('en'));
       return null;
     }
 
-    // 🔁 Refresh user (ensures emailVerified status is up to date)
+    // Refresh user to ensure emailVerified status is up to date
     await user.reload();
     final refreshedUser = FirebaseAuth.instance.currentUser;
 
-    // ❌ If not verified, sign out + revert to English
+    // If not verified, sign out and revert to English
     if (refreshedUser == null || !refreshedUser.emailVerified) {
       await FirebaseAuth.instance.signOut();
       await context.setLocale(const Locale('en'));
@@ -59,20 +59,20 @@ class _AuthGateState extends State<AuthGate> {
       return null;
     }
 
-    // ✅ If verified, fetch user language from backend Neon DB
+    // If verified, fetch user language from backend Neon DB
     final langCode = await _getUserLanguageFromBackend(refreshedUser);
     await context.setLocale(Locale(langCode));
 
     return refreshedUser;
   }
 
-  /// ✅ Calls backend `/firebase-login` to pull user info (including language)
+  /// Calls backend `/firebase-login` to pull user info (including language)
   Future<String> _getUserLanguageFromBackend(User firebaseUser) async {
     try {
-      // ✅ Get Firebase ID token for secure backend call
+      // Get Firebase ID token for secure backend call
       final idToken = await firebaseUser.getIdToken();
 
-      // ✅ Call backend to retrieve Neon DB user details
+      // Call backend to retrieve Neon DB user details
       final response = await http.post(
         Uri.parse("http://10.0.2.2:5000/api/auth/firebase-login"),
         headers: {
@@ -85,11 +85,11 @@ class _AuthGateState extends State<AuthGate> {
         final data = json.decode(response.body);
         return data['language_preference'] ?? 'en';
       } else {
-        print("⚠️ Backend returned error: ${response.body}");
+        print("Backend returned error: ${response.body}");
         return 'en';
       }
     } catch (e) {
-      print("⚠️ Error fetching language: $e");
+      print("Error fetching language: $e");
       return 'en';
     }
   }
@@ -99,7 +99,7 @@ class _AuthGateState extends State<AuthGate> {
     return FutureBuilder<User?>(
       future: _initUserFuture,
       builder: (context, snapshot) {
-        // ⏳ Still loading user + language preference
+        // Still loading user and language preference
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -108,7 +108,7 @@ class _AuthGateState extends State<AuthGate> {
 
         final user = snapshot.data;
 
-        // 👤 Not logged in — show login screen with enforced LTR layout
+        // Not logged in — show login screen with enforced LTR layout
         if (user == null) {
           return Directionality(
             textDirection: painting.TextDirection.ltr,
@@ -116,7 +116,7 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        // 🏠 Logged in + verified — go to home screen
+        // Logged in and verified — go to home screen
         return const HomeScreen();
       },
     );
