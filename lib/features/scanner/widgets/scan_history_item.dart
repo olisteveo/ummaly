@@ -1,36 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class ScanHistoryItem extends StatefulWidget {
+class ScanHistoryItem extends StatelessWidget {
   final Map<String, dynamic> item;
-  const ScanHistoryItem({required this.item});
+  final int index;
+  final bool isExpanded;
+  final VoidCallback onToggle;
 
-  @override
-  State<ScanHistoryItem> createState() => _ScanHistoryItemState();
-}
-
-class _ScanHistoryItemState extends State<ScanHistoryItem> {
-  bool _isExpanded = false;
+  const ScanHistoryItem({
+    required this.item,
+    required this.index,
+    required this.isExpanded,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.item['product'] ?? {};
+    final product = item['product'] ?? {};
     final String name = product['name'] ?? 'Unknown Product';
     final String halalStatus = product['halal_status'] ?? 'unknown';
     final String imageUrl = product['image_url'] ?? '';
-    final String timestamp = widget.item['scan_timestamp'] ?? '';
+    final String timestamp = item['latest_scan'] ?? item['scan_timestamp'] ?? '';
+    final int scanCount = item['scan_count'] ?? 1;
     final String ingredientsRaw = product['ingredients'] ?? '';
 
-    // Format date
+    // Format date with local timezone correction
     String formattedDate = '';
     try {
-      final date = DateTime.parse(timestamp);
+      final date = DateTime.parse(timestamp).toLocal(); // local time fix here
       formattedDate = DateFormat('d MMM yyyy • HH:mm').format(date);
     } catch (_) {
       formattedDate = timestamp;
     }
 
-    // Color for halal status
+    // Halal status colour
     Color statusColor;
     switch (halalStatus.toLowerCase()) {
       case 'halal':
@@ -43,7 +46,7 @@ class _ScanHistoryItemState extends State<ScanHistoryItem> {
         statusColor = Colors.grey;
     }
 
-    // Parse ingredients into list
+    // Ingredients to list
     final List<String> ingredients = ingredientsRaw
         .split(RegExp(r'[,;/]+'))
         .map((i) => i.trim())
@@ -53,7 +56,7 @@ class _ScanHistoryItemState extends State<ScanHistoryItem> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: InkWell(
-        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        onTap: onToggle,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -71,7 +74,8 @@ class _ScanHistoryItemState extends State<ScanHistoryItem> {
                       children: [
                         Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text('Scanned on: $formattedDate', style: const TextStyle(fontSize: 12)),
+                        Text('Scanned $scanCount time${scanCount > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12)),
+                        Text('Latest: $formattedDate', style: const TextStyle(fontSize: 12)),
                       ],
                     ),
                   ),
@@ -82,28 +86,48 @@ class _ScanHistoryItemState extends State<ScanHistoryItem> {
                   ),
                 ],
               ),
-              if (_isExpanded && ingredients.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text('Ingredients:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: List.generate(
-                    ingredients.length,
-                        (index) => SizedBox(
-                      width: (MediaQuery.of(context).size.width - 64) / 2, // 2-column
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('• ', style: TextStyle(fontSize: 14)),
-                          Expanded(child: Text(ingredients[index], style: const TextStyle(fontSize: 14))),
-                        ],
-                      ),
-                    ),
-                  ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) => SizeTransition(
+                  sizeFactor: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+                  child: child,
                 ),
-              ],
+                child: isExpanded && ingredients.isNotEmpty
+                    ? Padding(
+                  key: const ValueKey('expanded'),
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Ingredients:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(
+                          ingredients.length,
+                              (index) => SizedBox(
+                            width: (MediaQuery.of(context).size.width - 64) / 2,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• ', style: TextStyle(fontSize: 14)),
+                                Expanded(
+                                  child: Text(
+                                    ingredients[index],
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
