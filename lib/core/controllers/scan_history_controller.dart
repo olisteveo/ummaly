@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
-import '../../config/config.dart';  // ✅ NEW import for AppConfig
+import '../../config/config.dart';
 
 class ScanHistoryController extends GetxController {
   final Dio _dio = Dio();
@@ -9,6 +9,9 @@ class ScanHistoryController extends GetxController {
   final page = 1.obs;
   final hasMore = true.obs;
 
+  /// Index of the currently expanded item (for dropdown control)
+  final expandedIndex = RxnInt();
+
   Future<void> fetchHistory(String firebaseUid, {bool loadMore = false}) async {
     if (isLoading.value || (!hasMore.value && loadMore)) return;
 
@@ -16,7 +19,6 @@ class ScanHistoryController extends GetxController {
     try {
       print("📥 [ScanHistoryController] Fetching scan history for UID: $firebaseUid, page ${page.value}");
 
-      // ✅ Use AppConfig instead of hardcoded URL
       final response = await _dio.get(
         '${AppConfig.scanHistoryEndpoint}/$firebaseUid',
         queryParameters: {
@@ -26,7 +28,6 @@ class ScanHistoryController extends GetxController {
       );
 
       if (response.statusCode == 200) {
-        // ✅ Adjust this based on backend response structure
         final data = response.data is Map<String, dynamic> && response.data.containsKey('history')
             ? response.data['history'] as List
             : response.data as List;
@@ -37,7 +38,6 @@ class ScanHistoryController extends GetxController {
           history.assignAll(data.cast<Map<String, dynamic>>());
         }
 
-        // ✅ Pagination check — if fewer than 20, no more pages
         if (data.length < 20) {
           hasMore.value = false;
         } else {
@@ -53,5 +53,23 @@ class ScanHistoryController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void toggleExpanded(int index) {
+    if (expandedIndex.value == index) {
+      expandedIndex.value = null;
+    } else {
+      expandedIndex.value = index;
+    }
+  }
+
+  void deleteHistoryItem(Map<String, dynamic> item) {
+    history.remove(item);
+
+    // 🔧 You can hook up the backend delete call here
+    // final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    // _dio.delete('${AppConfig.scanHistoryEndpoint}/$uid/${item['barcode']}');
+
+    print('🗑️ Deleted scan history item: ${item['barcode']}');
   }
 }

@@ -39,7 +39,52 @@ class ScanHistoryScreen extends StatelessWidget {
             itemCount: controller.history.length,
             itemBuilder: (context, index) {
               final item = controller.history[index];
-              return ScanHistoryItem(item: item);
+
+              return Obx(() {
+                return Dismissible(
+                  key: Key('${item['barcode']}_${item['latest_scan']}'),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Confirm Delete'),
+                          content: const Text('Are you sure you want to delete this scan history entry?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  onDismissed: (direction) {
+                    controller.deleteHistoryItem(item);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Scan history entry deleted')),
+                    );
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  child: ScanHistoryItem(
+                    item: item,
+                    index: index,
+                    isExpanded: controller.expandedIndex.value == index,
+                    onToggle: () => controller.toggleExpanded(index),
+                  ),
+                );
+              });
             },
           ),
         );
