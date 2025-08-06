@@ -21,6 +21,7 @@ class BarcodeScanScreen extends StatefulWidget {
 class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  late BarcodeScanController _controller;
 
   @override
   void initState() {
@@ -31,18 +32,21 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       lowerBound: 0.9,
       upperBound: 1.1,
     )..repeat(reverse: true);
+
+    _controller = BarcodeScanController();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _controller.dispose(); // Stop camera safely
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => BarcodeScanController(),
+    return ChangeNotifierProvider<BarcodeScanController>.value(
+      value: _controller,
       child: Consumer<BarcodeScanController>(
         builder: (context, controller, _) {
           return Scaffold(
@@ -51,7 +55,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               title: const Text("Scan Product"),
               backgroundColor: AppColors.scanner,
               actions: [
-                /// ✅ History button
                 IconButton(
                   icon: const Icon(Icons.history),
                   tooltip: "View Scan History",
@@ -67,8 +70,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     }
                   },
                 ),
-
-                /// ✅ Torch toggle (using our manual torchState tracker)
                 ValueListenableBuilder<TorchState>(
                   valueListenable: controller.torchState,
                   builder: (context, state, _) {
@@ -86,7 +87,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             ),
             body: Stack(
               children: [
-                /// ✅ Camera view
                 MobileScanner(
                   controller: controller.cameraController,
                   fit: BoxFit.cover,
@@ -94,7 +94,6 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     if (controller.isScannerPaused) return;
 
                     final List<Barcode> barcodes = capture.barcodes;
-                    final Uint8List? image = capture.image;
 
                     if (barcodes.isNotEmpty) {
                       final String? code = barcodes.first.rawValue;
@@ -104,17 +103,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     }
                   },
                 ),
-
-                /// ✅ Overlay (guide box + footer)
                 ScannerOverlay(pulseController: _pulseController),
-
-                /// ✅ Loading spinner
                 if (controller.isLoading)
                   const Center(
                     child: CircularProgressIndicator(color: Colors.white),
                   ),
-
-                /// ✅ Product card or error card
                 ProductCard(
                   productData: controller.productData,
                   errorMessage: controller.errorMessage,

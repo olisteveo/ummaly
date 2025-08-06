@@ -24,16 +24,14 @@ class ScanHistoryItem extends StatelessWidget {
     final int scanCount = item['scan_count'] ?? 1;
     final String ingredientsRaw = product['ingredients'] ?? '';
 
-    // Format date with local timezone correction
     String formattedDate = '';
     try {
-      final date = DateTime.parse(timestamp).toLocal(); // local time fix here
+      final date = DateTime.parse(timestamp).toLocal();
       formattedDate = DateFormat('d MMM yyyy • HH:mm').format(date);
     } catch (_) {
       formattedDate = timestamp;
     }
 
-    // Halal status colour
     Color statusColor;
     switch (halalStatus.toLowerCase()) {
       case 'halal':
@@ -46,89 +44,95 @@ class ScanHistoryItem extends StatelessWidget {
         statusColor = Colors.grey;
     }
 
-    // Ingredients to list
     final List<String> ingredients = ingredientsRaw
         .split(RegExp(r'[,;/]+'))
         .map((i) => i.trim())
         .where((i) => i.isNotEmpty)
         .toList();
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: InkWell(
-        onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  imageUrl.isNotEmpty
-                      ? Image.network(imageUrl, width: 50, height: 50, fit: BoxFit.cover)
-                      : const Icon(Icons.image_not_supported, size: 50),
-                  const SizedBox(width: 12),
-                  Expanded(
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: InkWell(
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    imageUrl.isNotEmpty
+                        ? Image.network(imageUrl, width: 50, height: 50, fit: BoxFit.cover)
+                        : const Icon(Icons.image_not_supported, size: 50),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text('Scanned $scanCount time${scanCount > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12)),
+                          Text('Latest: $formattedDate', style: const TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Chip(
+                      label: Text(halalStatus.toUpperCase()),
+                      backgroundColor: statusColor.withOpacity(0.2),
+                      labelStyle: TextStyle(color: statusColor),
+                    ),
+                  ],
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (child, animation) => SizeTransition(
+                    sizeFactor: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.elasticOut,
+                    ),
+                    child: child,
+                  ),
+                  child: isExpanded && ingredients.isNotEmpty
+                      ? Padding(
+                    key: const ValueKey('expanded'),
+                    padding: const EdgeInsets.only(top: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text('Scanned $scanCount time${scanCount > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12)),
-                        Text('Latest: $formattedDate', style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Chip(
-                    label: Text(halalStatus.toUpperCase()),
-                    backgroundColor: statusColor.withOpacity(0.2),
-                    labelStyle: TextStyle(color: statusColor),
-                  ),
-                ],
-              ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) => SizeTransition(
-                  sizeFactor: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
-                  child: child,
-                ),
-                child: isExpanded && ingredients.isNotEmpty
-                    ? Padding(
-                  key: const ValueKey('expanded'),
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Ingredients:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: List.generate(
-                          ingredients.length,
-                              (index) => SizedBox(
-                            width: (MediaQuery.of(context).size.width - 64) / 2,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('• ', style: TextStyle(fontSize: 14)),
-                                Expanded(
-                                  child: Text(
-                                    ingredients[index],
-                                    style: const TextStyle(fontSize: 14),
+                        const Text('Ingredients:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: List.generate(
+                            ingredients.length,
+                                (index) => SizedBox(
+                              width: (MediaQuery.of(context).size.width - 64) / 2,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('• ', style: TextStyle(fontSize: 14)),
+                                  Expanded(
+                                    child: Text(
+                                      ingredients[index],
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-                    : const SizedBox.shrink(),
-              ),
-            ],
+                      ],
+                    ),
+                  )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
