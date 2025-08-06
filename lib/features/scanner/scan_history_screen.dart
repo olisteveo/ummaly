@@ -41,8 +41,12 @@ class ScanHistoryScreen extends StatelessWidget {
               final item = controller.history[index];
 
               return Obx(() {
+                final barcode = item['barcode'] ?? '';
+                final timestamp =
+                    item['latest_scan'] ?? item['scan_timestamp'] ?? DateTime.now().toIso8601String();
+
                 return Dismissible(
-                  key: Key('${item['barcode']}_${item['latest_scan']}'),
+                  key: Key('${barcode}_$timestamp'),
                   direction: DismissDirection.endToStart,
                   confirmDismiss: (direction) async {
                     return await showDialog(
@@ -65,8 +69,13 @@ class ScanHistoryScreen extends StatelessWidget {
                       },
                     );
                   },
-                  onDismissed: (direction) {
-                    controller.deleteHistoryItem(item);
+                  onDismissed: (direction) async {
+                    // ✅ Delete from backend
+                    await controller.deleteHistoryItem(item, firebaseUid);
+
+                    // ✅ Then remove from UI
+                    controller.history.remove(item);
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Scan history entry deleted')),
                     );
