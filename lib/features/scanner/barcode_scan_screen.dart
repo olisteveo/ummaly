@@ -58,11 +58,15 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                 IconButton(
                   icon: const Icon(Icons.history),
                   tooltip: "View Scan History",
-                  onPressed: () {
+                  onPressed: () async {
                     final String firebaseUid =
                         FirebaseAuth.instance.currentUser?.uid ?? '';
                     if (firebaseUid.isNotEmpty) {
-                      Get.to(() => ScanHistoryScreen(firebaseUid: firebaseUid));
+                      // ✅ Stop camera before navigating
+                      await controller.cameraController.stop();
+                      await Get.to(() => ScanHistoryScreen(firebaseUid: firebaseUid));
+                      // ✅ Restart camera after returning
+                      await controller.cameraController.start();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('You need to log in first')),

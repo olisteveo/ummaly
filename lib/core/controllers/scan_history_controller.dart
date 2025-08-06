@@ -63,13 +63,24 @@ class ScanHistoryController extends GetxController {
     }
   }
 
-  void deleteHistoryItem(Map<String, dynamic> item) {
-    history.remove(item);
+  /// Deletes a scan history item from the backend (Neon)
+  Future<void> deleteHistoryItem(Map<String, dynamic> item, String firebaseUid) async {
+    try {
+      final String barcode = item['barcode'];
 
-    // 🔧 You can hook up the backend delete call here
-    // final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    // _dio.delete('${AppConfig.scanHistoryEndpoint}/$uid/${item['barcode']}');
+      print('🗑️ Deleting scan history item from backend: $barcode for UID: $firebaseUid');
 
-    print('🗑️ Deleted scan history item: ${item['barcode']}');
+      final response = await _dio.delete(
+        '${AppConfig.scanHistoryEndpoint}/$firebaseUid/$barcode',
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ Successfully deleted scan history item: $barcode');
+      } else {
+        print('❌ Failed to delete scan history item. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error deleting scan history item: $e');
+    }
   }
 }
