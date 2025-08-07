@@ -41,7 +41,7 @@ class ScanHistoryScreen extends StatelessWidget {
               final item = controller.history[index];
 
               return Obx(() {
-                final barcode = item['barcode'] ?? '';
+                final barcode = item['product']?['barcode'] ?? '';
                 final timestamp =
                     item['latest_scan'] ?? item['scan_timestamp'] ?? DateTime.now().toIso8601String();
 
