@@ -66,7 +66,12 @@ class ScanHistoryController extends GetxController {
   /// Deletes a scan history item from the backend (Neon)
   Future<void> deleteHistoryItem(Map<String, dynamic> item, String firebaseUid) async {
     try {
-      final String barcode = item['barcode'];
+      final String? barcode = item['product']?['barcode'];
+
+      if (barcode == null || barcode.isEmpty) {
+        print('⚠️ Missing barcode for scan history item, cannot delete.');
+        return;
+      }
 
       print('🗑️ Deleting scan history item from backend: $barcode for UID: $firebaseUid');
 
