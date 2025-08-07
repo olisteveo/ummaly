@@ -67,6 +67,7 @@ class MyApp extends StatelessWidget {
       home: const AuthGate(),
       routes: {
         '/forgot-password': (context) => const ForgotPasswordPage(),
+        '/auth/login': (context) => const AuthGate(), // ✅ Added login route
       },
     );
   }
