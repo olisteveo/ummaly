@@ -3,7 +3,6 @@
 // modified, or distributed without express written permission.
 
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ummaly/core/widgets/account_form.dart';
 import 'package:ummaly/core/services/account_service.dart';
 
@@ -30,18 +29,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _loadUserData();
   }
 
-  /// Loads the current user's details (name, email, language) into the fields
+  /// Loads the current user's details (name, email, language) from backend
   Future<void> _loadUserData() async {
     setState(() => _isLoading = true);
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final data = await _accountService.getUserData(uid: user.uid);
-      if (data != null) {
+    final data = await _accountService.getUserFromBackend();
+
+    if (data != null && mounted) {
+      setState(() {
         _nameController.text = data['name'] ?? '';
         _emailController.text = data['email'] ?? '';
         _selectedLanguageCode = data['language_preference'] ?? 'en';
-      }
+      });
     }
 
     setState(() => _isLoading = false);
@@ -49,17 +48,23 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   /// Handles saving updated account settings
   Future<void> _saveChanges() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
     setState(() => _isLoading = true);
 
-    await _accountService.updateAccount(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      currentPassword: _passwordController.text.trim(), // ✅ Corrected
-      language: _selectedLanguageCode ?? 'en',
-    );
+    try {
+      await _accountService.updateAccount(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        currentPassword: _passwordController.text.trim(),
+        language: _selectedLanguageCode ?? 'en',
+      );
+    } catch (e) {
+      debugPrint('Error updating account: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update account')),
+        );
+      }
+    }
 
     setState(() => _isLoading = false);
   }
@@ -91,17 +96,36 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
 
     if (shouldDelete == true) {
-      _deleteAccount();
+      await _deleteAccount();
     }
   }
 
   /// Handles account deletion
   Future<void> _deleteAccount() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
     setState(() => _isLoading = true);
-    await _accountService.deleteAccount();
+
+    try {
+      await _accountService.deleteAccount();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account deleted successfully')),
+        );
+
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/auth/login',
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting account: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete account')),
+        );
+      }
+    }
+
     setState(() => _isLoading = false);
   }
 
@@ -112,7 +136,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       body: _isLoading && (_nameController.text.isEmpty)
           ? const Center(child: CircularProgressIndicator())
           : AbsorbPointer(
-        absorbing: _isLoading, // Disables form fields while loading
+        absorbing: _isLoading,
         child: AccountForm(
           nameController: _nameController,
           emailController: _emailController,

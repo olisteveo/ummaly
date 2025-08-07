@@ -2,21 +2,33 @@
 // This file is part of the Ummaly project and may not be reused,
 // modified, or distributed without express written permission.
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ummaly/config/config.dart';
 
 class AccountService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Loads the current user data from Firestore.
-  /// Accepts an optional UID (defaults to the logged-in user).
-  Future<Map<String, dynamic>?> getUserData({String? uid}) async {
-    final String? effectiveUid = uid ?? _auth.currentUser?.uid;
-    if (effectiveUid == null) return null;
+  /// Loads the current user data directly from Neon DB via backend.
+  Future<Map<String, dynamic>?> getUserFromBackend() async {
+    final User? user = _auth.currentUser;
+    if (user == null) return null;
 
-    final userDoc = await _firestore.collection('users').doc(effectiveUid).get();
-    return userDoc.exists ? userDoc.data() as Map<String, dynamic> : null;
+    final idToken = await user.getIdToken();
+    final response = await http.post(
+      Uri.parse('${AppConfig.authEndpoint}/firebase-login'),
+      headers: {
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body)['user'];
+    } else {
+      return null;
+    }
   }
 
   /// Updates the user’s name, email, and language preference.
@@ -32,7 +44,6 @@ class AccountService {
       throw Exception('No user is currently logged in.');
     }
 
-    // Re-authenticate before sensitive changes
     final credential = EmailAuthProvider.credential(
       email: user.email!,
       password: currentPassword,
@@ -40,31 +51,34 @@ class AccountService {
 
     await user.reauthenticateWithCredential(credential);
 
-    // If the email is changing, use Firebase's secure update flow
     if (email != user.email) {
       await user.verifyBeforeUpdateEmail(email);
     }
 
-    // Update Firestore document with new details
-    await _firestore.collection('users').doc(user.uid).update({
-      'name': name,
-      'email': email,
-      'language_preference': language,
-      'updated_at': FieldValue.serverTimestamp(),
-    });
+    // You could also send this update to the backend here if needed
   }
 
-  /// Deletes the user’s account from both FirebaseAuth and Firestore.
+  /// Sends a DELETE request to the backend to delete the user account.
   Future<void> deleteAccount() async {
     final User? user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('No user is currently logged in.');
+    if (user == null) throw Exception('No user is currently logged in.');
+
+    final idToken = await user.getIdToken();
+
+    final response = await http.delete(
+      Uri.parse('${AppConfig.authEndpoint}/account'),
+      headers: {
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 401) {
+      await _auth.signOut();
+      return;
     }
 
-    // Delete Firestore document first
-    await _firestore.collection('users').doc(user.uid).delete();
-
-    // Delete the Firebase user account
-    await user.delete();
+    final error = json.decode(response.body)['error'] ?? 'Unknown error';
+    throw Exception('Account deletion failed: $error');
   }
 }
