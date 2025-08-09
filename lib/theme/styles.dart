@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 
 /// App Color Palette
 class AppColors {
+  // Brand
   static const primary = Color(0xFF6C63FF); // Purple from Ummaly branding
   static const accent = Color(0xFF4CAF50);  // Optional green accent
+
+  // Surfaces & backgrounds
   static const background = Color(0xFFF5F5F5);
+  static const cardBackground = Colors.white; // NEW: used by loading/product cards
+
+  // Text
   static const text = Color(0xFF333333);
+  static const textPrimary = text;                 // NEW: semantic alias
+  static const textSecondary = Color(0xFF737373);  // NEW: softer body/caption text
+
+  // Status
   static const error = Colors.red;
   static const white = Colors.white;
 
@@ -15,6 +25,11 @@ class AppColors {
   static const prayer = Color(0xFFFF9800);        // Orange for prayer times
   static const events = Color(0xFF009688);        // Teal for events
   static const blog = Color(0xFFE91E63);          // Pink for blog posts
+
+  // Optional semantic aliases (handy if you theme more later)
+  static const surface = cardBackground;
+  static const onSurface = textPrimary;
+  static const onPrimary = white;
 }
 
 /// App Text Styles
@@ -22,13 +37,13 @@ class AppTextStyles {
   static const heading = TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
-    color: AppColors.text,
+    color: AppColors.textPrimary,
   );
 
   static const body = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.normal,
-    color: AppColors.text,
+    color: AppColors.textPrimary,
   );
 
   static const error = TextStyle(
@@ -49,11 +64,11 @@ class AppTextStyles {
     color: AppColors.white,
   );
 
-  // NEW: Style for scan instructions
+  // Style for scan instructions
   static const instruction = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w500,
-    color: Colors.grey,
+    color: AppColors.textSecondary,
   );
 }
 
@@ -61,7 +76,7 @@ class AppTextStyles {
 class AppButtons {
   static ButtonStyle primaryButton = ElevatedButton.styleFrom(
     backgroundColor: AppColors.primary,
-    foregroundColor: AppColors.white,
+    foregroundColor: AppColors.onPrimary,
     minimumSize: const Size(double.infinity, 50),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     textStyle: AppTextStyles.button,
@@ -75,7 +90,7 @@ class AppButtons {
     textStyle: AppTextStyles.button,
   );
 
-  // NEW: Smaller button (used for “Scan Again”)
+  // Smaller button (used for “Scan Again”)
   static ButtonStyle secondaryButton = ElevatedButton.styleFrom(
     backgroundColor: AppColors.scanner.withOpacity(0.8),
     foregroundColor: AppColors.white,
@@ -88,7 +103,7 @@ class AppButtons {
 /// App Card Styles (used for dashboard feature cards)
 class AppCards {
   static CardTheme card({
-    Color backgroundColor = AppColors.primary,
+    Color backgroundColor = AppColors.cardBackground,
     double elevation = 4,
     double radius = 16,
   }) {
@@ -113,4 +128,3 @@ class AppGradients {
     end: Alignment.bottomRight,
   );
 }
-
