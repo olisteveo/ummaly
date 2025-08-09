@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -35,6 +36,15 @@ class BarcodeScanController extends ChangeNotifier {
     productData = null;
     notifyListeners();
 
+    // Stop camera immediately to avoid multiple detections of the same code
+    try {
+      await cameraController.stop();
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error stopping camera after detection: $e");
+      }
+    }
+
     final firebaseUid = FirebaseAuth.instance.currentUser?.uid;
 
     final product = await _scanService.scanProduct(
@@ -59,6 +69,11 @@ class BarcodeScanController extends ChangeNotifier {
     errorMessage = null;
     isScannerPaused = false;
     notifyListeners();
+
+    // Restart camera with a short delay to fully reset analyzer
+    Future(() async {
+      await _restartCamera();
+    });
   }
 
   /// Clear any cached products (useful on logout or session reset)
@@ -67,13 +82,37 @@ class BarcodeScanController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Stop the camera safely
+  Future<void> _safeStop() async {
+    try {
+      await cameraController.stop();
+    } catch (_) {
+      // Ignore if already stopped
+    }
+  }
+
+  /// Start the camera safely
+  Future<void> _safeStart() async {
+    try {
+      await cameraController.start();
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error starting camera: $e");
+      }
+    }
+  }
+
+  /// Restart sequence to ensure MobileScanner analyzer resets cleanly
+  Future<void> _restartCamera() async {
+    await _safeStop();
+    await Future.delayed(const Duration(milliseconds: 200));
+    await _safeStart();
+    // Note: resetAutoFocus() not available in current MobileScanner, removed.
+  }
+
   /// Optional: Stop the camera before disposing controller
   void stopCamera() {
-    try {
-      cameraController.stop();
-    } catch (_) {
-      // No-op if already stopped
-    }
+    _safeStop();
   }
 
   @override

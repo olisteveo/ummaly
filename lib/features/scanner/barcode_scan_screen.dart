@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -39,7 +38,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   @override
   void dispose() {
     _pulseController.dispose();
-    _controller.dispose(); // Stop camera safely
+    _controller.dispose();
     super.dispose();
   }
 
@@ -62,10 +61,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     final String firebaseUid =
                         FirebaseAuth.instance.currentUser?.uid ?? '';
                     if (firebaseUid.isNotEmpty) {
-                      // ✅ Stop camera before navigating
                       await controller.cameraController.stop();
                       await Get.to(() => ScanHistoryScreen(firebaseUid: firebaseUid));
-                      // ✅ Restart camera after returning
                       await controller.cameraController.start();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -91,31 +88,50 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             ),
             body: Stack(
               children: [
-                MobileScanner(
-                  controller: controller.cameraController,
-                  fit: BoxFit.cover,
-                  onDetect: (BarcodeCapture capture) {
-                    if (controller.isScannerPaused) return;
+                // Fade animation between scanner and product view
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeIn,
+                  switchOutCurve: Curves.easeOut,
+                  child: controller.productData != null ||
+                      controller.errorMessage != null
+                      ? ProductCard(
+                    key: const ValueKey('productCard'),
+                    productData: controller.productData,
+                    errorMessage: controller.errorMessage,
+                    onScanAgain: () {
+                      controller.resetScan(); // resetScan is void; no await
+                    },
+                  )
+                      : Stack(
+                    key: const ValueKey('scannerView'),
+                    children: [
+                      MobileScanner(
+                        controller: controller.cameraController,
+                        fit: BoxFit.cover,
+                        onDetect: (BarcodeCapture capture) {
+                          if (controller.isScannerPaused) return;
 
-                    final List<Barcode> barcodes = capture.barcodes;
+                          final List<Barcode> barcodes = capture.barcodes;
 
-                    if (barcodes.isNotEmpty) {
-                      final String? code = barcodes.first.rawValue;
-                      if (code != null && code != controller.scannedCode) {
-                        controller.handleScan(code);
-                      }
-                    }
-                  },
-                ),
-                ScannerOverlay(pulseController: _pulseController),
-                if (controller.isLoading)
-                  const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                          if (barcodes.isNotEmpty) {
+                            final String? code = barcodes.first.rawValue;
+                            if (code != null &&
+                                code != controller.scannedCode) {
+                              controller.handleScan(code);
+                            }
+                          }
+                        },
+                      ),
+                      ScannerOverlay(pulseController: _pulseController),
+                      if (controller.isLoading)
+                        const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ),
+                    ],
                   ),
-                ProductCard(
-                  productData: controller.productData,
-                  errorMessage: controller.errorMessage,
-                  onScanAgain: controller.resetScan,
                 ),
               ],
             ),
