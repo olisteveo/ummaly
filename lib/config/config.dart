@@ -6,7 +6,7 @@ class AppConfig {
   static const bool useUsbDebugging = false;
 
   // ✅ Ngrok URL (always accessible from any Wi-Fi or mobile data)
-  static const String _ngrokUrl = "https://b880eced84d5.ngrok-free.app";
+  static const String _ngrokUrl = "https://2925b31b8c48.ngrok-free.app";
 
   // ✅ IPs for local testing (optional fallback if Ngrok is off)
   static const String _adbReverseIp = "10.0.2.2"; // Android emulator/USB via adb reverse

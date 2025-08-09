@@ -44,3 +44,4 @@ flutter:
   assets:
     - assets/translations/
     - assets/translations_lazy/
+    - assets/images/ummaly_logo.jpg
