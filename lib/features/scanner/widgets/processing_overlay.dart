@@ -5,10 +5,15 @@ import 'package:ummaly/theme/styles.dart';
 class ProcessingOverlay extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final int? step;
+  final int? totalSteps;
+
   const ProcessingOverlay({
     super.key,
     required this.title,
     this.subtitle,
+    this.step,
+    this.totalSteps,
   });
 
   @override
@@ -20,7 +25,7 @@ class ProcessingOverlay extends StatelessWidget {
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black.withOpacity(0.35),
+        color: Colors.black.withOpacity(0.45), // slightly darker dim
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -31,7 +36,12 @@ class ProcessingOverlay extends StatelessWidget {
               ),
             ),
             Center(
-              child: _LoadingCard(title: title, subtitle: subtitle),
+              child: _LoadingCard(
+                title: title,
+                subtitle: subtitle,
+                step: step,
+                totalSteps: totalSteps,
+              ),
             ),
           ],
         ),
@@ -43,7 +53,15 @@ class ProcessingOverlay extends StatelessWidget {
 class _LoadingCard extends StatelessWidget {
   final String title;
   final String? subtitle;
-  const _LoadingCard({required this.title, this.subtitle});
+  final int? step;
+  final int? totalSteps;
+
+  const _LoadingCard({
+    required this.title,
+    this.subtitle,
+    this.step,
+    this.totalSteps,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +72,7 @@ class _LoadingCard extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground, // from your theme
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-            color: Colors.black.withOpacity(0.25),
-          ),
-        ],
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -71,22 +81,44 @@ class _LoadingCard extends StatelessWidget {
             AppColors.cardBackground.withOpacity(0.92),
           ],
         ),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            color: Colors.black.withOpacity(0.25),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // “Ummaly” brand mark. Swap for an Image.asset if you have a logo file.
-          Text(
-            'Ummaly',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
+          // Logo with rounded corners
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/ummaly_logo.jpg', // ensure this is in pubspec.yaml
+              height: 60, // logo size
+              width: 60,
+              fit: BoxFit.cover,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          // Optional step indicator
+          if (step != null && totalSteps != null) ...[
+            Text(
+              'Step $step of $totalSteps',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+
           Text(
             title,
+            textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(
               color: AppColors.textPrimary,
             ),

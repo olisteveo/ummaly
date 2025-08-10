@@ -4,6 +4,7 @@ import '../../config/config.dart';
 
 class ScanHistoryController extends GetxController {
   final Dio _dio = Dio();
+
   final history = <Map<String, dynamic>>[].obs;
   final isLoading = false.obs;
   final page = 1.obs;
@@ -12,19 +13,23 @@ class ScanHistoryController extends GetxController {
   /// Index of the currently expanded item (for dropdown control)
   final expandedIndex = RxnInt();
 
+  static const int _limit = 20;
+
+  /// Fetch history; set [loadMore]=true for next page.
   Future<void> fetchHistory(String firebaseUid, {bool loadMore = false}) async {
     if (isLoading.value || (!hasMore.value && loadMore)) return;
 
+    // Reset pagination when not loading more
+    if (!loadMore) {
+      page.value = 1;
+      hasMore.value = true;
+    }
+
     isLoading.value = true;
     try {
-      print("📥 [ScanHistoryController] Fetching scan history for UID: $firebaseUid, page ${page.value}");
-
       final response = await _dio.get(
         '${AppConfig.scanHistoryEndpoint}/$firebaseUid',
-        queryParameters: {
-          'page': page.value,
-          'limit': 20,
-        },
+        queryParameters: {'page': page.value, 'limit': _limit},
       );
 
       if (response.statusCode == 200) {
@@ -38,21 +43,30 @@ class ScanHistoryController extends GetxController {
           history.assignAll(data.cast<Map<String, dynamic>>());
         }
 
-        if (data.length < 20) {
+        // Pagination bookkeeping
+        if (data.length < _limit) {
           hasMore.value = false;
         } else {
           page.value++;
         }
-
-        print("✅ [ScanHistoryController] Loaded ${data.length} scans (total: ${history.length})");
       } else {
-        print("❌ [ScanHistoryController] Server responded with ${response.statusCode}");
+        // server error
+        // ignore: avoid_print
+        print('❌ [ScanHistoryController] Server responded with ${response.statusCode}');
       }
     } catch (e) {
+      // ignore: avoid_print
       print('❌ Error fetching history: $e');
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// Convenience refresh: resets pagination and loads first page
+  Future<void> refreshHistory(String firebaseUid) async {
+    page.value = 1;
+    hasMore.value = true;
+    await fetchHistory(firebaseUid, loadMore: false);
   }
 
   void toggleExpanded(int index) {
@@ -63,29 +77,60 @@ class ScanHistoryController extends GetxController {
     }
   }
 
-  /// Deletes a scan history item from the backend (Neon)
+  /// Deletes all scans for a specific product (by barcode)
   Future<void> deleteHistoryItem(Map<String, dynamic> item, String firebaseUid) async {
     try {
       final String? barcode = item['product']?['barcode'];
-
       if (barcode == null || barcode.isEmpty) {
+        // ignore: avoid_print
         print('⚠️ Missing barcode for scan history item, cannot delete.');
         return;
       }
-
-      print('🗑️ Deleting scan history item from backend: $barcode for UID: $firebaseUid');
 
       final response = await _dio.delete(
         '${AppConfig.scanHistoryEndpoint}/$firebaseUid/$barcode',
       );
 
       if (response.statusCode == 200) {
-        print('✅ Successfully deleted scan history item: $barcode');
+        // ignore: avoid_print
+        print('✅ Deleted scan history for barcode: $barcode');
       } else {
+        // ignore: avoid_print
         print('❌ Failed to delete scan history item. Status code: ${response.statusCode}');
       }
     } catch (e) {
+      // ignore: avoid_print
       print('❌ Error deleting scan history item: $e');
+    }
+  }
+
+  /// Bulk delete ALL history for the user (new backend endpoint)
+  Future<int?> deleteAllHistory(String firebaseUid) async {
+    try {
+      final response = await _dio.delete(
+        '${AppConfig.scanHistoryEndpoint}/$firebaseUid',
+      );
+
+      if (response.statusCode == 200) {
+        final deletedCount = (response.data is Map<String, dynamic>)
+            ? response.data['deletedCount'] as int?
+            : null;
+
+        history.clear();
+        hasMore.value = false;
+        page.value = 1;
+        expandedIndex.value = null;
+
+        return deletedCount ?? 0;
+      } else {
+        // ignore: avoid_print
+        print('❌ Failed to delete all history. Status code: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('❌ Error deleting all history: $e');
+      return null;
     }
   }
 }
