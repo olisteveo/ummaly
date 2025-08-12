@@ -10,7 +10,7 @@ import 'package:ummaly/core/controllers/barcode_scan_controller.dart';
 import 'package:ummaly/features/scanner/widgets/product_card.dart';
 import 'package:ummaly/features/scanner/widgets/scanner_overlay.dart';
 import 'package:ummaly/features/scanner/scan_history_screen.dart';
-import 'package:ummaly/features/scanner/widgets/processing_overlay.dart'; // <-- use the shared overlay
+import 'package:ummaly/features/scanner/widgets/processing_overlay.dart'; // <-- shared overlay
 import 'package:ummaly/theme/styles.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
@@ -145,13 +145,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: controller.isLoading
-                            ? const ProcessingOverlay(
-                          title: 'Checking product…',
-                          subtitle:
-                          'Ummaly is verifying ingredients and sources',
-                          // step support is available; for now show 1/1
-                          step: 1,
-                          totalSteps: 1,
+                            ? ProcessingOverlay(
+                          title: controller.loadingTitle,
+                          subtitle: controller.loadingSubtitle,
+                          step: controller.loadingStep,
+                          totalSteps: controller.loadingTotal,
                         )
                             : const SizedBox.shrink(),
                       ),

@@ -1,40 +1,44 @@
 import 'dart:io';
 
 class AppConfig {
-  // 🔀 Toggle this ON (true) when testing via USB with adb reverse
-  // 🔀 Leave it OFF (false) when testing over Wi‑Fi
   static const bool useUsbDebugging = false;
+  static const String _adbReverseIp = "10.0.2.2";
+  static const String _wifiIp = "192.168.0.3";
 
-  // ✅ Ngrok URL (always accessible from any Wi-Fi or mobile data)
-  static const String _ngrokUrl = "https://2925b31b8c48.ngrok-free.app";
+  // Can be just the host; we’ll add https:// automatically.
+  static const String _ngrokUrl = "https://baa3d1fddc36.ngrok-free.app";
 
-  // ✅ IPs for local testing (optional fallback if Ngrok is off)
-  static const String _adbReverseIp = "10.0.2.2"; // Android emulator/USB via adb reverse
-  static const String _wifiIp = "192.168.0.3";    // Your laptop’s Wi‑Fi IP
+  // flutter run --dart-define=API_BASE=...
+  static const String _apiBaseOverride =
+  String.fromEnvironment('API_BASE', defaultValue: "");
 
-  // ✅ Base URL logic – defaults to Ngrok unless you explicitly want local
+  static bool _hasScheme(String v) =>
+      v.startsWith('http://') || v.startsWith('https://');
+
+  static String _ensureScheme(String v) =>
+      _hasScheme(v) ? v : 'https://$v';
+
+  static String _stripTrailingSlash(String v) =>
+      v.endsWith('/') ? v.substring(0, v.length - 1) : v;
+
+  // Always returns a URL with scheme and no trailing slash
   static String get baseUrl {
-    // ✅ Always use Ngrok by default for global access
-    return _ngrokUrl;
-
-    // 👉 If you ever want to switch back to local for debugging, comment the above line
-    // and uncomment below:
-    /*
-    if (Platform.isAndroid) {
-      return useUsbDebugging
-          ? "http://$_adbReverseIp:5000"
-          : "http://$_wifiIp:5000";
-    } else {
-      return "http://$_wifiIp:5000";
+    if (_apiBaseOverride.isNotEmpty) {
+      final withScheme = _ensureScheme(_apiBaseOverride.trim());
+      return _stripTrailingSlash(withScheme);
     }
-    */
+    if (_ngrokUrl.isNotEmpty) {
+      final withScheme = _ensureScheme(_ngrokUrl.trim());
+      return _stripTrailingSlash(withScheme);
+    }
+    final local = Platform.isAndroid
+        ? (useUsbDebugging ? "http://$_adbReverseIp:5000" : "http://$_wifiIp:5000")
+        : "http://$_wifiIp:5000";
+    return _stripTrailingSlash(local);
   }
 
-  // ✅ Centralised API endpoints (all based on baseUrl)
-  static String get scanEndpoint => "$baseUrl/api/scan";
-  static String get authEndpoint => "$baseUrl/api/auth";
-  static String get pingEndpoint => "$baseUrl/api/ping";
-
-  // ✅ NEW: Scan History endpoint for user-specific history lookups
+  static String get scanEndpoint        => "$baseUrl/api/scan";
+  static String get authEndpoint        => "$baseUrl/api/auth";
+  static String get pingEndpoint        => "$baseUrl/api/ping";
   static String get scanHistoryEndpoint => "$baseUrl/api/scan-history";
 }

@@ -14,6 +14,13 @@ class BarcodeScanController extends ChangeNotifier {
   bool isScannerPaused = false;
   String? errorMessage;
 
+  /// Loading step state for the overlay (drives “Step 1/2/3”)
+  int loadingStep = 1;
+  final int loadingTotal = 3;
+  String loadingTitle = 'Checking product…';
+  String loadingSubtitle = 'Ummaly is verifying ingredients and sources';
+  Timer? _stepperTimer;
+
   /// Track torch state manually since MobileScanner 7.x removed getter
   final ValueNotifier<TorchState> torchState = ValueNotifier(TorchState.off);
 
@@ -34,6 +41,13 @@ class BarcodeScanController extends ChangeNotifier {
     isLoading = true;
     errorMessage = null;
     productData = null;
+
+    // Init overlay stepper
+    loadingStep = 1;
+    loadingTitle = 'Checking product…';
+    loadingSubtitle = 'Certification registries, ingredients, and analysis';
+    _startOverlayStepper();
+
     notifyListeners();
 
     // Stop camera immediately to avoid multiple detections of the same code
@@ -47,19 +61,28 @@ class BarcodeScanController extends ChangeNotifier {
 
     final firebaseUid = FirebaseAuth.instance.currentUser?.uid;
 
-    final product = await _scanService.scanProduct(
-      barcode,
-      firebaseUid: firebaseUid,
-    );
+    try {
+      final product = await _scanService.scanProduct(
+        barcode,
+        firebaseUid: firebaseUid,
+      );
 
-    if (product != null) {
-      productData = product.toJson();
-    } else {
-      errorMessage = "Product not found or server error";
+      if (product != null) {
+        productData = product.toJson();
+        errorMessage = null;
+      } else {
+        productData = null;
+        errorMessage = "Product not found or server error";
+      }
+    } catch (e) {
+      productData = null;
+      errorMessage = "Network error: $e";
+    } finally {
+      _stopOverlayStepper();
+      isLoading = false;
+      notifyListeners();
+      // keep scanner paused so the ProductCard is visible; it resumes on "Scan again"
     }
-
-    isLoading = false;
-    notifyListeners();
   }
 
   /// Reset scanner state and allow scanning again
@@ -68,6 +91,13 @@ class BarcodeScanController extends ChangeNotifier {
     productData = null;
     errorMessage = null;
     isScannerPaused = false;
+
+    // Reset overlay step state
+    _stopOverlayStepper();
+    loadingStep = 1;
+    loadingTitle = 'Checking product…';
+    loadingSubtitle = 'Ummaly is verifying ingredients and sources';
+
     notifyListeners();
 
     // Restart camera with a short delay to fully reset analyzer
@@ -115,8 +145,35 @@ class BarcodeScanController extends ChangeNotifier {
     _safeStop();
   }
 
+  void _startOverlayStepper() {
+    _stepperTimer?.cancel();
+    _stepperTimer = Timer.periodic(const Duration(milliseconds: 900), (t) {
+      if (!isLoading) {
+        t.cancel();
+        return;
+      }
+      if (loadingStep < loadingTotal) {
+        loadingStep++;
+        if (loadingStep == 2) {
+          loadingSubtitle = 'Fetching ingredients (ITS / OFF)…';
+        } else if (loadingStep == 3) {
+          loadingSubtitle = 'Analyzing (Rapid + Ummaly)…';
+        }
+        notifyListeners();
+      } else {
+        t.cancel();
+      }
+    });
+  }
+
+  void _stopOverlayStepper() {
+    _stepperTimer?.cancel();
+    _stepperTimer = null;
+  }
+
   @override
   void dispose() {
+    _stopOverlayStepper();
     stopCamera();
     cameraController.dispose();
     torchState.dispose();
