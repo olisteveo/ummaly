@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:ummaly/theme/styles.dart';
 
-/// Product card (V2, refined header)
+/// Product card (V2, refined header + interactions)
 /// - hero header (image + brand)
-/// - status chip sits BELOW the title/brand, right-aligned (prevents title crowding)
-/// - confidence progress bar
+/// - status chip below title/brand, right-aligned
+/// - AI confidence rating label + progress bar
 /// - flagged items as chips
 /// - collapsible ingredients
 /// - timeline-style steps
+/// - tap name to view full title; tap image to view fullscreen zoomable image
 class ProductCard extends StatelessWidget {
   final Map<String, dynamic>? productData;
   final String? errorMessage;
@@ -38,11 +39,13 @@ class ProductCard extends StatelessWidget {
 
     final status = (pd?['halal_status']?.toString() ?? 'UNKNOWN').toUpperCase();
     final statusColor = AppStyleHelpers.halalStatusColor(status);
-    final confidence = (pd?['confidence'] is num) ? (pd!['confidence'] as num).toDouble() : null;
+    final confidence =
+    (pd?['confidence'] is num) ? (pd!['confidence'] as num).toDouble() : null;
     final ingredientsText = pd?['ingredients']?.toString() ?? '';
 
     final name = pd?['name']?.toString() ?? 'Unnamed Product';
     final brand = pd?['brand']?.toString();
+    final imageUrl = pd?['image_url']?.toString();
 
     return Container(
       color: Colors.black.withOpacity(0.7),
@@ -64,21 +67,31 @@ class ProductCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _HeroImage(url: pd?['image_url']?.toString()),
+                    _HeroImage(
+                      url: imageUrl,
+                      onTap: () => _showImageDialog(context, imageUrl),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title can wrap up to 2 lines with ellipsis
-                          Text(
-                            name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: true,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              height: 1.15,
+                          // Title can wrap up to 2 lines with ellipsis — tap to view full
+                          InkWell(
+                            onTap: () => _showNameDialog(context, name, brand),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.15,
+                                ),
+                              ),
                             ),
                           ),
                           if (brand != null && brand!.isNotEmpty)
@@ -88,7 +101,8 @@ class ProductCard extends StatelessWidget {
                                 brand!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(color: Colors.black54),
                               ),
                             ),
                           // Chip placed on its own line, right-aligned within the text column
@@ -105,26 +119,31 @@ class ProductCard extends StatelessWidget {
                   ],
                 ),
 
-                // CONFIDENCE BAR
+                // AI CONFIDENCE LABEL + BAR
                 if (confidence != null) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: confidence.clamp(0, 1),
-                            minHeight: 8,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
+                      Text('AI confidence rating',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          )),
+                      const Spacer(),
                       Text(
                         '${(confidence * 100).toStringAsFixed(0)}%',
-                        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: confidence.clamp(0, 1),
+                      minHeight: 8,
+                    ),
                   ),
                 ],
 
@@ -144,7 +163,8 @@ class ProductCard extends StatelessWidget {
 
                 // FLAGS AS CHIPS
                 if (flags.isNotEmpty) ...[
-                  Text('Flagged ingredients & terms', style: theme.textTheme.titleMedium),
+                  Text('Flagged ingredients & terms',
+                      style: theme.textTheme.titleMedium),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 8,
@@ -161,18 +181,21 @@ class ProductCard extends StatelessWidget {
                         backgroundColor: c.withOpacity(0.08),
                         shape: StadiumBorder(side: BorderSide(color: c)),
                         labelStyle: theme.textTheme.bodySmall,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 0),
                       );
                     }).toList(),
                   ),
                 ] else ...[
                   Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const Icon(Icons.check_circle,
+                          color: Colors.green, size: 18),
                       const SizedBox(width: 6),
                       Text(
                         'No flagged items found',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.green),
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: Colors.green),
                       ),
                     ],
                   ),
@@ -204,7 +227,8 @@ class ProductCard extends StatelessWidget {
                       icon: icon,
                       color: color,
                       title: label,
-                      subtitle: (detail != null && detail.isNotEmpty) ? detail : null,
+                      subtitle:
+                      (detail != null && detail.isNotEmpty) ? detail : null,
                       showConnector: !isLast,
                     );
                   }),
@@ -225,11 +249,89 @@ class ProductCard extends StatelessWidget {
       ),
     );
   }
+
+  // ==== Dialog helpers ====
+
+  void _showNameDialog(BuildContext context, String name, String? brand) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Product name'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name, style: Theme.of(ctx).textTheme.titleMedium),
+            if (brand != null && brand.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Brand: $brand', style: AppTextStyles.body),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String? url) {
+    if (url == null || url.isEmpty) return;
+
+    // Material wrapper prevents weird color blending on some devices.
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Image',
+      barrierColor: Colors.black.withOpacity(0.85),
+      pageBuilder: (_, __, ___) {
+        return Material(
+          color: Colors.transparent,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              color: Colors.black.withOpacity(0.95),
+              child: SafeArea(
+                child: Stack(
+                  children: [
+                    Center(
+                      child: InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(url, fit: BoxFit.contain),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 160),
+      transitionBuilder: (_, anim, __, child) =>
+          FadeTransition(opacity: anim, child: child),
+    );
+  }
 }
 
 class _HeroImage extends StatelessWidget {
   final String? url;
-  const _HeroImage({this.url});
+  final VoidCallback? onTap;
+  const _HeroImage({this.url, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -243,9 +345,9 @@ class _HeroImage extends StatelessWidget {
       child: const Icon(Icons.image_not_supported, size: 36, color: Colors.grey),
     );
 
-    if (url == null || url!.isEmpty) return ph;
-
-    return ClipRRect(
+    final child = (url == null || url!.isEmpty)
+        ? ph
+        : ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Image.network(
         url!,
@@ -254,6 +356,12 @@ class _HeroImage extends StatelessWidget {
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => ph,
       ),
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: child,
     );
   }
 }
