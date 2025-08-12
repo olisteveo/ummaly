@@ -55,7 +55,6 @@ class ScanService {
       final words = s.split(RegExp(r'\s+')).length;
 
       if (addressWords.hasMatch(s)) {
-        // treat likely addressy lines as non-ingredients
         if (commaCount >= 1 || words <= 5 || regTm.hasMatch(s)) continue;
       }
       if (regTm.hasMatch(s)) continue;
@@ -63,7 +62,6 @@ class ScanService {
 
       cleaned.add(s);
     }
-    // de-dupe (case insensitive)
     final seen = <String>{};
     return cleaned.where((e) => seen.add(e.toLowerCase())).toList();
   }
@@ -71,7 +69,6 @@ class ScanService {
   void _applySanitizedFields(Map<String, dynamic> productData, List<String> cleanList) {
     final cleanText = cleanList.join(', ');
 
-    // write to BOTH snake_case and camelCase so any widget/model sees the same thing
     productData['ingredients_list_sanitized'] = cleanList;
     productData['ingredientsListSanitized']   = cleanList;
 
@@ -81,7 +78,6 @@ class ScanService {
     productData['ingredients_text'] = cleanText;
     productData['ingredientsText']  = cleanText;
 
-    // keep ingredients as String for backward compat
     productData['ingredients']      = cleanText;
   }
   // --------------------------------

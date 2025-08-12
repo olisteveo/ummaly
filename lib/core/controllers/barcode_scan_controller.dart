@@ -14,11 +14,16 @@ class BarcodeScanController extends ChangeNotifier {
   bool isScannerPaused = false;
   String? errorMessage;
 
-  /// Loading step state for the overlay (drives “Step 1/2/3”)
+  /// Loading step state for the overlay (drives “Step n / total”)
   int loadingStep = 1;
-  final int loadingTotal = 3;
+
+  /// We now show AI as a distinct step → 4 total.
+  /// If you later want to make this dynamic, you can set it from /api/status or
+  /// from product.analysis_steps.length once you have it.
+  int loadingTotal = 4;
+
   String loadingTitle = 'Checking product…';
-  String loadingSubtitle = 'Ummaly is verifying ingredients and sources';
+  String loadingSubtitle = 'Certification registries, ingredients, and analysis';
   Timer? _stepperTimer;
 
   /// Track torch state manually since MobileScanner 7.x removed getter
@@ -44,6 +49,7 @@ class BarcodeScanController extends ChangeNotifier {
 
     // Init overlay stepper
     loadingStep = 1;
+    loadingTotal = 4; // show AI adjudication as step 4
     loadingTitle = 'Checking product…';
     loadingSubtitle = 'Certification registries, ingredients, and analysis';
     _startOverlayStepper();
@@ -69,6 +75,13 @@ class BarcodeScanController extends ChangeNotifier {
 
       if (product != null) {
         productData = product.toJson();
+
+        // If backend provides analysis_steps, we can reflect the true total
+        final steps = (productData?['analysis_steps'] as List?) ?? const [];
+        if (steps.isNotEmpty) {
+          loadingTotal = steps.length; // typically 4 when AI is on
+        }
+
         errorMessage = null;
       } else {
         productData = null;
@@ -95,8 +108,9 @@ class BarcodeScanController extends ChangeNotifier {
     // Reset overlay step state
     _stopOverlayStepper();
     loadingStep = 1;
+    loadingTotal = 4;
     loadingTitle = 'Checking product…';
-    loadingSubtitle = 'Ummaly is verifying ingredients and sources';
+    loadingSubtitle = 'Certification registries, ingredients, and analysis';
 
     notifyListeners();
 
@@ -137,7 +151,7 @@ class BarcodeScanController extends ChangeNotifier {
     await _safeStop();
     await Future.delayed(const Duration(milliseconds: 200));
     await _safeStart();
-    // Note: resetAutoFocus() not available in current MobileScanner, removed.
+    // Note: resetAutoFocus() not available in current MobileScanner.
   }
 
   /// Optional: Stop the camera before disposing controller
@@ -154,10 +168,13 @@ class BarcodeScanController extends ChangeNotifier {
       }
       if (loadingStep < loadingTotal) {
         loadingStep++;
+        // Keep user informed with step-specific subtitles
         if (loadingStep == 2) {
           loadingSubtitle = 'Fetching ingredients (ITS / OFF)…';
         } else if (loadingStep == 3) {
-          loadingSubtitle = 'Analyzing (Rapid + Ummaly)…';
+          loadingSubtitle = 'Analyzing (Rapid + Ummaly rules)…';
+        } else if (loadingStep == 4) {
+          loadingSubtitle = 'AI adjudication…';
         }
         notifyListeners();
       } else {
