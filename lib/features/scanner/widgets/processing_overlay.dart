@@ -2,11 +2,21 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:ummaly/theme/styles.dart';
 
+/// Processing overlay that can work with either:
+///  - explicit [step]/[totalSteps], or
+///  - a backend-provided list length passed via [dynamicTotalSteps].
 class ProcessingOverlay extends StatelessWidget {
   final String title;
   final String? subtitle;
+
+  /// If you already know the step index (1-based) and total,
+  /// pass them in. Otherwise you can just pass [dynamicTotalSteps].
   final int? step;
   final int? totalSteps;
+
+  /// Optional total count derived from a dynamic steps list (e.g., analysis_steps.length).
+  /// Only used when [totalSteps] is null.
+  final int? dynamicTotalSteps;
 
   const ProcessingOverlay({
     super.key,
@@ -14,18 +24,19 @@ class ProcessingOverlay extends StatelessWidget {
     this.subtitle,
     this.step,
     this.totalSteps,
+    this.dynamicTotalSteps,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final resolvedTotal = totalSteps ?? dynamicTotalSteps;
 
     return IgnorePointer(
       ignoring: true,
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black.withOpacity(0.45), // slightly darker dim
+        color: Colors.black.withOpacity(0.45),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -40,7 +51,7 @@ class ProcessingOverlay extends StatelessWidget {
                 title: title,
                 subtitle: subtitle,
                 step: step,
-                totalSteps: totalSteps,
+                totalSteps: resolvedTotal,
               ),
             ),
           ],
@@ -92,19 +103,17 @@ class _LoadingCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Logo with rounded corners
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.asset(
-              'assets/images/ummaly_logo.jpg', // ensure this is in pubspec.yaml
-              height: 60, // logo size
+              'assets/images/ummaly_logo.jpg',
+              height: 60,
               width: 60,
               fit: BoxFit.cover,
             ),
           ),
           const SizedBox(height: 10),
 
-          // Optional step indicator
           if (step != null && totalSteps != null) ...[
             Text(
               'Step $step of $totalSteps',
