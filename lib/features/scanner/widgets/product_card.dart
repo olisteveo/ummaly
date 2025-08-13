@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ummaly/theme/styles.dart';
+import 'package:ummaly/core/services/product_flag_service.dart';
+import 'package:ummaly/features/scanner/widgets/product_flag_dialog.dart';
 
 /// Product card (V2, refined header + interactions)
 /// - hero header (image + brand)
@@ -9,7 +11,8 @@ import 'package:ummaly/theme/styles.dart';
 /// - collapsible ingredients
 /// - timeline-style steps
 /// - tap name to view full title; tap image to view fullscreen zoomable image
-class ProductCard extends StatelessWidget {
+/// - flag icon to create/retract a user flag, with count
+class ProductCard extends StatefulWidget {
   final Map<String, dynamic>? productData;
   final String? errorMessage;
   final VoidCallback onScanAgain;
@@ -22,7 +25,94 @@ class ProductCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard> {
+  bool? _myFlagged; // null until loaded
+  int? _flagsCount; // null until loaded
+  bool _loadingFlagMeta = false;
+
+  int? get _productId {
+    final pd = widget.productData;
+    if (pd == null) return null;
+    final v = pd['id'];
+    if (v is int) return v;
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
+
+  String? get _barcode {
+    final pd = widget.productData;
+    if (pd == null) return null;
+    final v = pd['barcode'];
+    if (v == null) return null;
+    return v.toString();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefer values provided by the API payload to avoid extra calls
+    _myFlagged = widget.productData?['myFlagged'] as bool?;
+    final fc = widget.productData?['flagsCount'];
+    _flagsCount = fc is int ? fc : (fc is String ? int.tryParse(fc) : null);
+
+    // If not present, try to fetch metadata in the background
+    if ((_myFlagged == null || _flagsCount == null) && _productId != null) {
+      _fetchFlagMeta(_productId!);
+    }
+  }
+
+  Future<void> _fetchFlagMeta(int productId) async {
+    setState(() => _loadingFlagMeta = true);
+    try {
+      final svc = ProductFlagService();
+      final me = await svc.getMyFlag(productId: productId);
+      final summary = await svc.getSummary(productId: productId);
+      setState(() {
+        _myFlagged = (me?['flagged'] as bool?) ?? false;
+        _flagsCount = (summary['count'] as int?) ?? 0;
+      });
+    } catch (_) {
+      // Non-fatal: leave values as-is
+    } finally {
+      if (mounted) setState(() => _loadingFlagMeta = false);
+    }
+  }
+
+  Future<void> _onFlagPressed() async {
+    // Allow dialog if we have either a numeric product id OR a barcode
+    final pid = _productId;
+    final code = _barcode;
+    if (pid == null && (code == null || code.isEmpty)) return;
+
+    final result = await showModalBottomSheet<ProductFlagResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => ProductFlagDialog(
+        productId: pid,           // nullable; dialog will prefer barcode for creation
+        barcode: code,
+        initiallyFlagged: _myFlagged ?? false,
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _myFlagged = result.flagged;
+        if (result.flagsCountDelta != null) {
+          final current = _flagsCount ?? 0;
+          final next = current + result.flagsCountDelta!;
+          _flagsCount = next < 0 ? 0 : next;
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final errorMessage = widget.errorMessage;
+    final productData = widget.productData;
+
     if (errorMessage == null && productData == null) return const SizedBox();
     final theme = Theme.of(context);
     final pd = productData;
@@ -47,6 +137,10 @@ class ProductCard extends StatelessWidget {
     final brand = pd?['brand']?.toString();
     final imageUrl = pd?['image_url']?.toString();
 
+    // Determine if we can open the flag dialog from this UI state
+    final bool _canOpenFlag =
+        _productId != null || ((_barcode ?? '').isNotEmpty);
+
     return Container(
       color: Colors.black.withOpacity(0.7),
       child: Center(
@@ -63,7 +157,7 @@ class ProductCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // HEADER (image + text column; chip is below title to avoid crowding)
+                // HEADER (image + text column; chip and flag area are below title)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -94,23 +188,68 @@ class ProductCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (brand != null && brand!.isNotEmpty)
+                          if (brand != null && brand.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                brand!,
+                                brand,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodyMedium
                                     ?.copyWith(color: Colors.black54),
                               ),
                             ),
-                          // Chip placed on its own line, right-aligned within the text column
+                          // Status + Flag bar
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: _StatusChip(text: status, color: statusColor),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _StatusChip(
+                                      text: status,
+                                      color: statusColor,
+                                    ),
+                                  ),
+                                ),
+                                // Flag action and count
+                                if (_loadingFlagMeta)
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                else
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        onPressed: _canOpenFlag ? _onFlagPressed : null,
+                                        tooltip: (_myFlagged ?? false)
+                                            ? 'You flagged this'
+                                            : 'Flag this product',
+                                        icon: Icon(
+                                          (_myFlagged ?? false)
+                                              ? Icons.flag
+                                              : Icons.outlined_flag,
+                                        ),
+                                        color: (_myFlagged ?? false)
+                                            ? theme.colorScheme.primary
+                                            : null,
+                                      ),
+                                      if (_flagsCount != null)
+                                        Padding(
+                                          padding:
+                                          const EdgeInsets.only(right: 4.0),
+                                          child: Text(
+                                            _flagsCount.toString(),
+                                            style: theme.textTheme.bodySmall,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -161,7 +300,7 @@ class ProductCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // FLAGS AS CHIPS
+                // FLAGS AS CHIPS (ingredient-level flags from the AI scan)
                 if (flags.isNotEmpty) ...[
                   Text('Flagged ingredients & terms',
                       style: theme.textTheme.titleMedium),
@@ -176,13 +315,13 @@ class ProductCard extends StatelessWidget {
                       final c = AppStyleHelpers.halalStatusColor(st);
                       final label = notes.isNotEmpty ? '$term — $notes' : term;
                       return Chip(
-                        label: Text('${label} (${st.toUpperCase()})'),
+                        label: Text('$label (${st.toUpperCase()})'),
                         avatar: Icon(Icons.flag, size: 16, color: c),
                         backgroundColor: c.withOpacity(0.08),
                         shape: StadiumBorder(side: BorderSide(color: c)),
                         labelStyle: theme.textTheme.bodySmall,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 0),
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                       );
                     }).toList(),
                   ),
@@ -239,7 +378,7 @@ class ProductCard extends StatelessWidget {
                 // SCAN AGAIN
                 ElevatedButton(
                   style: AppButtons.secondaryButton,
-                  onPressed: onScanAgain,
+                  onPressed: widget.onScanAgain,
                   child: const Text('Scan Again'),
                 ),
               ],
@@ -270,8 +409,9 @@ class ProductCard extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Close')),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -280,7 +420,6 @@ class ProductCard extends StatelessWidget {
   void _showImageDialog(BuildContext context, String? url) {
     if (url == null || url.isEmpty) return;
 
-    // Material wrapper prevents weird color blending on some devices.
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
