@@ -11,7 +11,7 @@ class AppConfig {
   static const String _wifiIp = "192.168.0.3";    // your local machine IP on Wi-Fi/LAN
 
   // Can be just the host; _ensureScheme() will add https:// automatically.
-  static const String _ngrokUrl = "https://4722aae8cb7c.ngrok-free.app";
+  static const String _ngrokUrl = "https://3155139239a4.ngrok-free.app";
 
   // flutter run --dart-define=API_BASE=https://my-api.example.com
   static const String _apiBaseOverride =
@@ -47,9 +47,9 @@ class AppConfig {
   static String get apiBaseUrl => baseUrl;
 
   // Core endpoints
-  static String get scanEndpoint => "$baseUrl/api/scan";
-  static String get authEndpoint => "$baseUrl/api/auth";
-  static String get pingEndpoint => "$baseUrl/api/ping";
+  static String get scanEndpoint        => "$baseUrl/api/scan";
+  static String get authEndpoint        => "$baseUrl/api/auth";
+  static String get pingEndpoint        => "$baseUrl/api/ping";
   static String get scanHistoryEndpoint => "$baseUrl/api/scan-history";
 
   // Product flagging endpoints (strings)
@@ -74,7 +74,28 @@ class AppConfig {
 }
 
 /// Lightweight alias for legacy/import convenience.
-/// Some files may import `Config.apiBaseUrl`; keep this in sync with AppConfig.
+/// Some files import `Config.*`; keep in sync with AppConfig.
 class Config {
-  static String get apiBaseUrl => AppConfig.apiBaseUrl;
+  static String get baseUrl             => AppConfig.baseUrl;
+  static String get apiBaseUrl          => AppConfig.apiBaseUrl;
+  static String get scanHistoryEndpoint => AppConfig.scanHistoryEndpoint;
+
+  // Expose flag endpoints here too (handy for services/widgets using Config)
+  static String productFlagsByProduct(int productId) =>
+      AppConfig.productFlagsByProduct(productId);
+  static String productFlagsMe(int productId) =>
+      AppConfig.productFlagsMe(productId);
+  static String productFlagsSummary(int productId) =>
+      AppConfig.productFlagsSummary(productId);
+  static String productFlagsByBarcode(String barcode) =>
+      AppConfig.productFlagsByBarcode(barcode);
+
+  static Uri productFlagsByProductUri(int productId) =>
+      AppConfig.productFlagsByProductUri(productId);
+  static Uri productFlagsMeUri(int productId) =>
+      AppConfig.productFlagsMeUri(productId);
+  static Uri productFlagsSummaryUri(int productId) =>
+      AppConfig.productFlagsSummaryUri(productId);
+  static Uri productFlagsByBarcodeUri(String barcode) =>
+      AppConfig.productFlagsByBarcodeUri(barcode);
 }
