@@ -98,7 +98,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.transparent, // gradient behind
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         title: const Text('Scan History'),
@@ -212,7 +212,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                 final item = entry.item!;
 
                 return Obx(() {
-                  final barcode = item['product']?['barcode'] ?? '';
+                  final barcode = item['product']?['barcode'] ?? item['barcode'] ?? '';
                   final timestamp = item['latest_scan'] ??
                       item['scan_timestamp'] ??
                       DateTime.now().toIso8601String();
@@ -226,8 +226,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                         builder: (BuildContext context) {
                           return AlertDialog(
                             title: const Text('Confirm Delete'),
-                            content: const Text(
-                                'Are you sure you want to delete this scan history entry?'),
+                            content: const Text('Are you sure you want to delete this scan history entry?'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(false),
@@ -251,12 +250,6 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                         const SnackBar(content: Text('Scan history entry deleted')),
                       );
                     },
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
                     child: ScanHistoryItem(
                       item: item,
                       index: entries[index].originalIndex ?? index,
@@ -265,6 +258,24 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                       onToggle: () => controller.toggleExpanded(
                         entries[index].originalIndex ?? index,
                       ),
+                      // NEW: update flag UI immediately after dialog returns
+                      onFlagChanged: (bool flagged, int delta) {
+                        // mutate the underlying map used by controller.history
+                        final current = (item['flagsCount'] ??
+                            item['flags_count'] ??
+                            0) as int;
+                        final next = (current + delta).clamp(0, 999999);
+                        item['flagsCount'] = next;
+                        item['flags_count'] = next; // keep both keys in sync
+                        item['myFlagged'] = flagged;
+
+                        // minor visual feedback
+                        final msg = flagged ? 'Flag added' : 'Flag removed';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(msg)),
+                        );
+                        setState(() {}); // refresh the row
+                      },
                     ),
                   );
                 });
@@ -336,7 +347,7 @@ enum _RowType { header, item }
 
 /// Build grouped entries without touching the controller
 List<_ListEntry> _buildGroupedEntries(List history) {
-  // Defensive copy
+  // Defensive copy (maps keep identity)
   final items = history.cast<Map<String, dynamic>>().toList();
 
   DateTime? _parseTs(Map<String, dynamic> it) {
