@@ -45,7 +45,7 @@ class ScanHistoryItem extends StatelessWidget {
     final int scanCount = _asInt(item['scan_count'] ?? 1);
     final String ingredientsRaw = (product['ingredients'] ?? '').toString();
 
-    // Date
+    // Date (separate, visible row)
     String formattedDate = '';
     try {
       final date = DateTime.parse(timestamp).toLocal();
@@ -57,12 +57,8 @@ class ScanHistoryItem extends StatelessWidget {
     // Status color
     final Color statusColor = AppStyleHelpers.halalStatusColor(halalStatus);
 
-    // Ingredients split
-    final List<String> ingredients = ingredientsRaw
-        .split(RegExp(r'[,;/]+'))
-        .map((i) => i.trim())
-        .where((i) => i.isNotEmpty)
-        .toList();
+    // Ingredients split (parentheses-aware + cleanup)
+    final List<String> ingredients = _smartSplitIngredients(ingredientsRaw);
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 260),
@@ -72,14 +68,14 @@ class ScanHistoryItem extends StatelessWidget {
         elevation: 1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: InkWell(
-          onTap: onToggle,
+          onTap: onToggle, // tap anywhere toggles ingredients
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: image + title/brand + meta row
+                // Top row: image + title/brand
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -110,48 +106,31 @@ class ScanHistoryItem extends StatelessWidget {
                             ),
                           const SizedBox(height: 6),
 
-                          // ==== META BAR (no overflow) ====
+                          // ==== META BAR (chip left, actions right; no date here) ====
                           Row(
                             children: [
-                              // Left side flexes: chip + date (date ellipsizes)
+                              // Left: status chip
                               Expanded(
-                                child: Row(
-                                  children: [
-                                    Chip(
-                                      label: Text(halalStatus),
-                                      backgroundColor:
-                                      statusColor.withOpacity(0.12),
-                                      side: BorderSide(color: statusColor),
-                                      labelStyle: TextStyle(
-                                        color: statusColor,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Chip(
+                                    label: Text(halalStatus),
+                                    backgroundColor:
+                                    statusColor.withOpacity(0.12),
+                                    side: BorderSide(color: statusColor),
+                                    labelStyle: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        formattedDate,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(color: Colors.black54),
-                                      ),
-                                    ),
-                                  ],
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                    padding:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                  ),
                                 ),
                               ),
-
-                              const SizedBox(width: 8),
-
-                              // Right side: fixed-width actions
+                              // Right: flags badge + flag icon (fixed width)
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -161,10 +140,8 @@ class ScanHistoryItem extends StatelessWidget {
                                           horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
                                         color: Colors.red.withOpacity(0.08),
-                                        borderRadius:
-                                        BorderRadius.circular(999),
-                                        border:
-                                        Border.all(color: Colors.red),
+                                        borderRadius: BorderRadius.circular(999),
+                                        border: Border.all(color: Colors.red),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -197,17 +174,14 @@ class ScanHistoryItem extends StatelessWidget {
                                         context: context,
                                         isScrollControlled: true,
                                         builder: (_) => ProductFlagDialog(
-                                          productId:
-                                          productId == 0 ? null : productId,
+                                          productId: productId,
                                           barcode: barcode,
                                           initiallyFlagged: myFlagged,
                                         ),
                                       );
-                                      if (res != null &&
-                                          onFlagChanged != null) {
+                                      if (res != null && onFlagChanged != null) {
                                         onFlagChanged!(
-                                            res.flagged,
-                                            res.flagsCountDelta ?? 0);
+                                            res.flagged, res.flagsCountDelta ?? 0);
                                       }
                                     },
                                   ),
@@ -222,7 +196,27 @@ class ScanHistoryItem extends StatelessWidget {
                   ],
                 ),
 
-                // Barcode line
+                // ===== Date row (prominent, its own line) =====
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.event, size: 16, color: Colors.black54),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        formattedDate,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // ===== Barcode + scan count row =====
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -241,15 +235,47 @@ class ScanHistoryItem extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('Scanned $scanCount time${scanCount > 1 ? 's' : ''}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.black54)),
+                    Text(
+                      'Scanned $scanCount time${scanCount > 1 ? 's' : ''}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.black54),
+                    ),
                   ],
                 ),
 
-                // Expandable ingredients
+                // ===== Inline "Ingredients" toggle row =====
+                const SizedBox(height: 4),
+                InkWell(
+                  onTap: onToggle,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.format_list_bulleted,
+                            size: 18, color: Colors.black54),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Ingredients',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          size: 22,
+                          color: Colors.black54,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ===== Expandable ingredients (clean bullets) =====
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   transitionBuilder: (child, animation) => SizeTransition(
@@ -260,35 +286,27 @@ class ScanHistoryItem extends StatelessWidget {
                   child: isExpanded && ingredients.isNotEmpty
                       ? Padding(
                     key: const ValueKey('expanded'),
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: 4),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Ingredients:',
-                            style:
-                            TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: List.generate(
                             ingredients.length,
                                 (i) => SizedBox(
-                              width: (MediaQuery.of(context).size.width -
-                                  64) /
-                                  2,
+                              width: (MediaQuery.of(context).size.width - 64) / 2,
                               child: Row(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text('• ',
-                                      style:
-                                      TextStyle(fontSize: 14)),
+                                      style: TextStyle(fontSize: 14)),
                                   Expanded(
                                     child: Text(
                                       ingredients[i],
-                                      style: const TextStyle(
-                                          fontSize: 14),
+                                      style: const TextStyle(fontSize: 14),
                                     ),
                                   ),
                                 ],
@@ -309,10 +327,87 @@ class ScanHistoryItem extends StatelessWidget {
     );
   }
 
+  // ---------- helpers ----------
+
   int _asInt(dynamic v) {
     if (v == null) return 0;
     if (v is int) return v;
     return int.tryParse(v.toString()) ?? 0;
+  }
+
+  /// Split by comma/semicolon **only when not inside parentheses**.
+  /// Also merges standalone percentages (e.g. "8%") into the previous item,
+  /// and filters out boilerplate like "see ingredients in bold".
+  List<String> _smartSplitIngredients(String text) {
+    if (text.trim().isEmpty) return const [];
+
+    final List<String> tokens = [];
+    final buf = StringBuffer();
+    int depth = 0;
+
+    void flush() {
+      final t = buf.toString().trim();
+      buf.clear();
+      if (t.isEmpty) return;
+
+      // Filter boilerplate / non-ingredients
+      if (_looksLikeDisclaimer(t)) return;
+
+      // If just a percentage, append to previous token
+      final pct = RegExp(r'^\d+(\.\d+)?\s*%$');
+      if (pct.hasMatch(t)) {
+        if (tokens.isNotEmpty) {
+          tokens[tokens.length - 1] = '${tokens.last} ($t)';
+        }
+        return;
+      }
+
+      tokens.add(t);
+    }
+
+    for (int i = 0; i < text.length; i++) {
+      final ch = text[i];
+
+      if (ch == '(') {
+        depth++;
+        buf.write(ch);
+        continue;
+      }
+      if (ch == ')') {
+        depth = depth > 0 ? depth - 1 : 0;
+        buf.write(ch);
+        continue;
+      }
+
+      if ((ch == ',' || ch == ';' || ch == '/') && depth == 0) {
+        flush();
+      } else {
+        buf.write(ch);
+      }
+    }
+    flush();
+
+    // Final tidy: collapse spaces and remove duplicates
+    final seen = <String>{};
+    final cleaned = <String>[];
+    for (final t in tokens) {
+      final s = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (s.isEmpty) continue;
+      if (seen.add(s.toLowerCase())) cleaned.add(s);
+    }
+    return cleaned;
+  }
+
+  bool _looksLikeDisclaimer(String s) {
+    final x = s.toLowerCase().trim();
+    if (x.isEmpty) return true;
+    if (x.startsWith('see ingredient')) return true;
+    if (x.startsWith('see ingredients')) return true;
+    if (x.startsWith('for allergen')) return true;
+    if (x.contains('for allergens')) return true;
+    if (RegExp(r'^\d+\s*ml$').hasMatch(x)) return true; // e.g. "100ml"
+    if (RegExp(r'^\d+\s*g$').hasMatch(x)) return true;  // e.g. "30g"
+    return false;
   }
 }
 

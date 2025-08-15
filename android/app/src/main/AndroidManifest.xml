@@ -1,18 +1,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ummaly.app">
 
+    <!-- Internet + network state (needed to call your backend) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Foreground location for restaurant lookup -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
-        android:label="Ummaly"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:label="Ummaly"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
 
-        <!-- 🚫 STOP Firebase from auto-initializing (we initialize manually in Dart) -->
-        <meta-data android:name="firebase_automatic_data_collection_enabled" android:value="false" />
-        <meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />
-        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
-        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
+        <!-- Stop Firebase from auto-initializing (we initialize manually in Dart) -->
+        <meta-data
+            android:name="firebase_automatic_data_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
 
-        <!-- ✅ Your Flutter MainActivity -->
+        <!-- Your Flutter MainActivity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,13 +51,13 @@
             </intent-filter>
         </activity>
 
-        <!-- ✅ Flutter Plugin Registration -->
+        <!-- Flutter plugin registration -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
 
-    <!-- ✅ Required for Flutter text plugins -->
+    <!-- Required for Flutter text plugins (PROCESS_TEXT intents) -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />

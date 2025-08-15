@@ -12,6 +12,7 @@ dependencies:
   dio: ^5.4.3+1   # ✅ NEW - For API requests to backend
   flutter:
     sdk: flutter
+  geolocator: ^11.0.0
 
   # Core UI and icons
   cupertino_icons: ^1.0.8

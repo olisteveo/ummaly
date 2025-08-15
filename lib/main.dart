@@ -8,6 +8,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:ummaly/core/locale/locale_manager.dart';
 import 'package:flutter/services.dart'; // ✅ For portrait lock
 
+// ✅ Restaurant Search screen + service imports
+import 'package:ummaly/features/restaurant/restaurant_search_screen.dart';
+import 'package:ummaly/core/services/restaurant_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -68,6 +72,9 @@ class MyApp extends StatelessWidget {
       routes: {
         '/forgot-password': (context) => const ForgotPasswordPage(),
         '/auth/login': (context) => const AuthGate(), // ✅ Added login route
+        '/restaurants/search': (context) => RestaurantSearchScreen(
+          service: const RestaurantService(), // ✅ Required param
+        ),
       },
     );
   }
