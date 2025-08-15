@@ -143,7 +143,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       title: tr('find_restaurants'),
                       color: AppColors.restaurants,
                       onTap: () {
-                        // placeholder for restaurants feature
+                        // Navigate via named route defined in main.dart
+                        Navigator.pushNamed(context, '/restaurants/search');
                       },
                     ),
                     _buildFeatureCard(

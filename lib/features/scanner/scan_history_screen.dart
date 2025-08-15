@@ -20,13 +20,17 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
   bool _showScrollToTop = false;
   bool _deletingAll = false;
 
+  // show onboarding tips once per visit
+  bool _tipsShown = false;
+
   @override
   void initState() {
     super.initState();
 
-    // Fetch once after first frame
+    // Fetch once after first frame and show onboarding tips
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.fetchHistory(widget.firebaseUid);
+      _maybeShowTips();
     });
 
     _scrollController.addListener(() {
@@ -34,6 +38,30 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
       if (show != _showScrollToTop) {
         setState(() => _showScrollToTop = show);
       }
+    });
+  }
+
+  void _maybeShowTips() {
+    if (_tipsShown) return;
+    _tipsShown = true;
+
+    final messenger = ScaffoldMessenger.of(context);
+    // Tip 1
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Tip: swipe a row left to delete it.'),
+        duration: Duration(milliseconds: 2200),
+      ),
+    );
+    // Tip 2 (chained)
+    Future.delayed(const Duration(milliseconds: 2300), () {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Tip: tap a row — ingredients will expand/collapse.'),
+          duration: Duration(milliseconds: 2500),
+        ),
+      );
     });
   }
 
@@ -220,6 +248,31 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                   return Dismissible(
                     key: Key('${barcode}_$timestamp'),
                     direction: DismissDirection.endToStart,
+
+                    // Neutral background (required when using secondaryBackground)
+                    background: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: const Icon(Icons.delete_outline, color: Colors.white70, size: 28),
+                    ),
+
+                    // Red bin for left-swipe (endToStart)
+                    secondaryBackground: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: const Icon(Icons.delete, color: Colors.white, size: 28),
+                    ),
+
                     confirmDismiss: (direction) async {
                       return await showDialog(
                         context: context,
@@ -258,18 +311,15 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                       onToggle: () => controller.toggleExpanded(
                         entries[index].originalIndex ?? index,
                       ),
-                      // NEW: update flag UI immediately after dialog returns
+                      // Update flag UI immediately after dialog returns
                       onFlagChanged: (bool flagged, int delta) {
-                        // mutate the underlying map used by controller.history
-                        final current = (item['flagsCount'] ??
-                            item['flags_count'] ??
-                            0) as int;
+                        final current =
+                        (item['flagsCount'] ?? item['flags_count'] ?? 0) as int;
                         final next = (current + delta).clamp(0, 999999);
                         item['flagsCount'] = next;
                         item['flags_count'] = next; // keep both keys in sync
                         item['myFlagged'] = flagged;
 
-                        // minor visual feedback
                         final msg = flagged ? 'Flag added' : 'Flag removed';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(msg)),
@@ -399,6 +449,7 @@ List<_ListEntry> _buildGroupedEntries(List history) {
     final tb = _parseTs(b) ?? DateTime.fromMillisecondsSinceEpoch(0);
     return tb.compareTo(ta);
   }
+
   for (final k in buckets.keys) {
     buckets[k]!.sort(_cmp);
   }

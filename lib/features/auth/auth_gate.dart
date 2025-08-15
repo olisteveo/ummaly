@@ -1,10 +1,14 @@
 // Copyright © 2025 Oliver & Haidar. All rights reserved.
 
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart' as painting;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:ummaly/config/config.dart'; // ✅ Use central baseUrl/authEndpoint
 import 'package:ummaly/features/home/home_screen.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
 import 'package:ummaly/core/widgets/snackbar_helper.dart';
@@ -23,6 +27,10 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
+    // Helpful when switching between ngrok / emulator / LAN
+    // (Remove if too chatty.)
+    // ignore: avoid_print
+    debugPrint('🔗 API base = ${AppConfig.baseUrl}');
     _initUserFuture = _prepareUserAndLocale();
   }
 
@@ -48,21 +56,24 @@ class _AuthGateState extends State<AuthGate> {
       await FirebaseAuth.instance.signOut();
       await context.setLocale(const Locale('en'));
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        SnackbarHelper.show(
-          context,
-          'Please verify your email before logging in.',
-          backgroundColor: Colors.orange,
-        );
-      });
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          SnackbarHelper.show(
+            context,
+            'Please verify your email before logging in.',
+            backgroundColor: Colors.orange,
+          );
+        });
+      }
 
       return null;
     }
 
     // If verified, fetch user language from backend Neon DB
     final langCode = await _getUserLanguageFromBackend(refreshedUser);
-    await context.setLocale(Locale(langCode));
-
+    if (mounted) {
+      await context.setLocale(Locale(langCode));
+    }
     return refreshedUser;
   }
 
@@ -72,24 +83,55 @@ class _AuthGateState extends State<AuthGate> {
       // Get Firebase ID token for secure backend call
       final idToken = await firebaseUser.getIdToken();
 
-      // Call backend to retrieve Neon DB user details
-      final response = await http.post(
-        Uri.parse("http://10.0.2.2:5000/api/auth/firebase-login"),
+      // Build endpoint from central config (works with emulator/NGROK/LAN)
+      final uri = Uri.parse('${AppConfig.authEndpoint}/firebase-login');
+
+      final response = await http
+          .post(
+        uri,
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
         },
-      );
+      )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['language_preference'] ?? 'en';
-      } else {
-        print("Backend returned error: ${response.body}");
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final code = (data['language_preference'] as String?)?.trim();
+        return (code != null && code.isNotEmpty) ? code : 'en';
+      }
+
+      // Handle session/auth failures explicitly
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        // Token invalid/expired or backend rejected — sign out and fall back to EN
+        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            SnackbarHelper.show(
+              context,
+              'Session expired. Please log in again.',
+              backgroundColor: Colors.orange,
+            );
+          });
+        }
         return 'en';
       }
+
+      // ignore: avoid_print
+      print('Backend returned error ${response.statusCode}: ${response.body}');
+      return 'en';
+    } on TimeoutException {
+      // ignore: avoid_print
+      print('Error fetching language: request timed out (${AppConfig.baseUrl})');
+      return 'en';
+    } on SocketException catch (e) {
+      // ignore: avoid_print
+      print('Network error fetching language: $e (${AppConfig.baseUrl})');
+      return 'en';
     } catch (e) {
-      print("Error fetching language: $e");
+      // ignore: avoid_print
+      print('Error fetching language: $e');
       return 'en';
     }
   }
