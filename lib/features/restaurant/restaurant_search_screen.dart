@@ -1,14 +1,19 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // NEW
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../config/config.dart'; // ✅ Single source of truth for base URL/endpoints
+import 'package:ummaly/theme/styles.dart';
+import 'package:ummaly/theme/map_styles.dart';
+import 'package:ummaly/config/config.dart';
+import 'package:ummaly/features/restaurant/widgets/restaurant_card.dart'; // RestaurantCardLite
 
 class RestaurantSearchScreen extends StatefulWidget {
   final dynamic service;
@@ -27,24 +32,24 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   List<dynamic> _items = [];
 
-  // diagnostics (last attempt only)
-  String? _lastUrl;
-  int? _lastStatus;
-  String? _lastBodySnippet;
-
-  bool _inFlight = false;
-
-  // ---------- MAP STATE ----------
+  // ---------- MAP ----------
   GoogleMapController? _mapCtrl;
   final Set<Marker> _markers = <Marker>{};
-  LatLng? _userLatLng;
+  LatLng _center = const LatLng(51.5074, -0.1278); // London default
+  double _radiusKm = 5.0; // 0.5–40.0
+
   static const _fallbackCamera =
-  CameraPosition(target: LatLng(51.5074, -0.1278), zoom: 11); // London
+  CameraPosition(target: LatLng(51.5074, -0.1278), zoom: 11);
+
+  // UX helpers
+  Timer? _radiusDebounce;
+  int _requestSerial = 0;
 
   @override
   void dispose() {
     _qCtrl.dispose();
     _nearCtrl.dispose();
+    _radiusDebounce?.cancel();
     _mapCtrl?.dispose();
     super.dispose();
   }
@@ -58,10 +63,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   Future<Position?> _tryGetPosition() async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('[Search] Location services disabled');
-        return null;
-      }
+      if (!serviceEnabled) return null;
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -69,51 +71,52 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        debugPrint('[Search] Location permission denied: $permission');
         return null;
       }
 
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
       );
-      debugPrint('[Search] Got location ${pos.latitude}, ${pos.longitude}');
-      _userLatLng = LatLng(pos.latitude, pos.longitude);
+      _center = LatLng(pos.latitude, pos.longitude);
       return pos;
-    } catch (e, st) {
-      debugPrint('[Search] Failed to get location: $e\n$st');
+    } catch (_) {
       return null;
     }
   }
 
-  Future<void> _fitMapToMarkers() async {
-    if (_mapCtrl == null || _markers.isEmpty) {
-      // No markers but we might still center on user
-      if (_mapCtrl != null && _userLatLng != null) {
-        await _mapCtrl!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: _userLatLng!, zoom: 13),
+  double _zoomForRadiusMeters(double radiusMeters) {
+    final r = radiusMeters.clamp(100.0, 80000.0);
+    const world = 40075016.686; // meters at equator
+    const viewPortFraction = 0.6; // want diameter ~60% of width
+    final metersPerPixel = (r * 2) / (viewPortFraction * 256);
+    final zoom = math.log(world / metersPerPixel) / math.ln2;
+    return zoom.clamp(3.0, 21.0);
+  }
+
+  Future<void> _fitMapToPinsRespectingRadius() async {
+    if (_mapCtrl == null) return;
+
+    if (_markers.isEmpty) {
+      await _mapCtrl!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: _center,
+            zoom: _zoomForRadiusMeters(_radiusKm * 1000),
           ),
-        );
-      }
+        ),
+      );
       return;
     }
 
-    // Build bounds from all markers (+ user if available)
-    final points = <LatLng>[
-      for (final m in _markers) m.position,
-      if (_userLatLng != null) _userLatLng!,
-    ];
-
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
+    final points = _markers.map((m) => m.position).toList();
+    double minLat = points.first.latitude, maxLat = points.first.latitude;
+    double minLng = points.first.longitude, maxLng = points.first.longitude;
 
     for (final p in points.skip(1)) {
-      minLat = p.latitude < minLat ? p.latitude : minLat;
-      maxLat = p.latitude > maxLat ? p.latitude : maxLat;
-      minLng = p.longitude < minLng ? p.longitude : minLng;
-      maxLng = p.longitude > maxLng ? p.longitude : maxLng;
+      if (p.latitude < minLat) minLat = p.latitude;
+      if (p.latitude > maxLat) maxLat = p.latitude;
+      if (p.longitude < minLng) minLng = p.longitude;
+      if (p.longitude > maxLng) maxLng = p.longitude;
     }
 
     final bounds = LatLngBounds(
@@ -121,17 +124,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       northeast: LatLng(maxLat, maxLng),
     );
 
-    // Animate after the first frame so the map has a size
     await Future<void>.delayed(const Duration(milliseconds: 50));
     try {
       await _mapCtrl!.animateCamera(
         CameraUpdate.newLatLngBounds(bounds, 60),
       );
     } catch (_) {
-      // If bounds are “invalid” (identical points), fall back to a zoom-in
       await _mapCtrl!.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(target: points.first, zoom: 14),
+          CameraPosition(target: points.first, zoom: 15),
+        ),
+      );
+    }
+
+    final currentZoom = await _mapCtrl!.getZoomLevel();
+    final radiusZoom = _zoomForRadiusMeters(_radiusKm * 1000);
+    if (currentZoom > radiusZoom) {
+      await _mapCtrl!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: _center, zoom: radiusZoom),
         ),
       );
     }
@@ -139,7 +150,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   void _rebuildMarkersFromItems() {
     final markers = <Marker>{};
-
     for (var i = 0; i < _items.length; i++) {
       final e = _items[i];
       if (e is! Map) continue;
@@ -154,30 +164,62 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       markers.add(
         Marker(
           markerId: MarkerId('r$i'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(275), // Ummaly hue
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(title: name, snippet: address),
         ),
       );
     }
-
     setState(() => _markers
       ..clear()
       ..addAll(markers));
+  }
 
-    _fitMapToMarkers();
+  // distance + maps
+  double _haversineMeters(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000.0;
+    double toRad(double d) => d * (math.pi / 180.0);
+    final dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(toRad(lat1)) *
+            math.cos(toRad(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    return 2 * R * math.asin(math.sqrt(a));
+  }
+
+  String _distanceLabel(double lat, double lng) {
+    final m =
+    _haversineMeters(_center.latitude, _center.longitude, lat, lng);
+    return m < 1000
+        ? '${m.round()} m away'
+        : '${(m / 1000).toStringAsFixed(m < 10000 ? 1 : 0)} km away';
+  }
+
+  Future<void> _openInMaps(double lat, double lng, String name) async {
+    final query = Uri.encodeComponent(name);
+    final geo = Uri.parse('geo:$lat,$lng?q=$lat,$lng($query)'); // Android
+    final apple =
+    Uri.parse('http://maps.apple.com/?q=$query&ll=$lat,$lng'); // iOS
+    if (await canLaunchUrl(geo)) {
+      await launchUrl(geo);
+    } else {
+      await launchUrl(apple, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _search() async {
-    if (_loading || _inFlight) return;
+    if (_loading) return;
     FocusScope.of(context).unfocus();
 
     setState(() {
       _loading = true;
       _error = null;
-      _inFlight = true;
       _items = [];
       _markers.clear();
     });
+
+    final myTurn = ++_requestSerial;
 
     try {
       final q = _qCtrl.text.trim();
@@ -185,7 +227,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
       Position? pos;
       if (near.isEmpty) {
-        // Only try GPS if "Near" is empty; otherwise rely on backend geocoding.
         pos = await _tryGetPosition();
       }
 
@@ -198,115 +239,63 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         'Accept': 'application/json',
       };
 
-      // --------- build attempts (progressively relax constraints) ----------
-      final attempts = <Map<String, String>>[
-        {
-          'page': '1',
-          'pageSize': '20',
-          'radiusMeters': '3000',
-          if (q.isNotEmpty) 'query': q,
-          if (near.isNotEmpty) 'near': near,
-          if (pos != null) 'lat': pos.latitude.toString(),
-          if (pos != null) 'lng': pos.longitude.toString(),
-        },
-        {
-          'page': '1',
-          'pageSize': '20',
-          'radiusMeters': '10000',
-          if (q.isNotEmpty) 'query': q,
-          if (near.isNotEmpty) 'near': near,
-          if (pos != null) 'lat': pos.latitude.toString(),
-          if (pos != null) 'lng': pos.longitude.toString(),
-        },
-        {
-          'page': '1',
-          'pageSize': '20',
-          'radiusMeters': '20000',
-          'query': q.isNotEmpty ? q : 'restaurant',
-          'q': q.isNotEmpty ? q : 'restaurant',
-          if (near.isNotEmpty) 'near': near,
-          if (pos != null) 'lat': pos.latitude.toString(),
-          if (pos != null) 'lng': pos.longitude.toString(),
-        },
-      ];
+      final qp = <String, String>{
+        'page': '1',
+        'pageSize': '20',
+        'radiusMeters': (_radiusKm * 1000).round().toString(),
+        if (q.isNotEmpty) 'query': q,
+        if (near.isNotEmpty) 'near': near,
+        if (pos != null) 'lat': pos.latitude.toString(),
+        if (pos != null) 'lng': pos.longitude.toString(),
+      };
 
-      List<dynamic> found = [];
-      int? lastStatusLocal;
-      String? lastUrlLocal;
-      String? lastBodyLocal;
+      final uri = Uri.parse(Config.restaurantsSearchEndpoint)
+          .replace(queryParameters: qp);
 
-      for (var i = 0; i < attempts.length; i++) {
-        final qp = attempts[i];
-        final uri = Uri.parse(Config.restaurantsSearchEndpoint)
-            .replace(queryParameters: qp);
+      if (kDebugMode) debugPrint('[Search] GET $uri');
 
-        _lastUrl = lastUrlLocal = uri.toString();
-        _lastStatus = lastStatusLocal = null;
-        _lastBodySnippet = lastBodyLocal = null;
+      final resp = await HttpClientBinding.get(uri, headers: headers);
 
-        debugPrint('[Search] → GET $uri  (attempt ${i + 1}/${attempts.length})');
-        debugPrint(
-            '[Search] headers: ${headers.keys.join(', ')} (tokenLen=${token.length})');
-
-        final resp = await HttpClientBinding.get(uri, headers: headers);
-
-        _lastStatus = lastStatusLocal = resp.statusCode;
-        _lastBodySnippet = lastBodyLocal =
-        resp.body.length > 1200 ? '${resp.body.substring(0, 1200)}…' : resp.body;
-
-        debugPrint('[Search] ← status ${resp.statusCode}');
-        if (kDebugMode) {
-          debugPrint('[Search] body (snippet): $lastBodyLocal');
-        }
-
-        if (resp.statusCode < 200 || resp.statusCode >= 300) {
-          if (i == attempts.length - 1) {
-            throw Exception('Restaurant search failed (${resp.statusCode})');
-          }
-          continue;
-        }
-
-        // decode
-        final decoded = jsonDecode(resp.body);
-        List<dynamic> items;
-        if (decoded is List) {
-          items = decoded;
-        } else if (decoded is Map) {
-          items = (decoded['items'] ??
-              decoded['data'] ??
-              decoded['results'] ??
-              decoded['restaurants'] ??
-              []) as List<dynamic>;
-        } else {
-          items = const [];
-        }
-
-        if (items.isNotEmpty) {
-          found = items;
-          break;
-        }
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw Exception('Restaurant search failed (${resp.statusCode})');
       }
 
-      setState(() {
-        _items = found;
-        _lastUrl = lastUrlLocal;
-        _lastStatus = lastStatusLocal;
-        _lastBodySnippet = lastBodyLocal;
-      });
+      final decoded = jsonDecode(resp.body);
+      List<dynamic> items;
+      if (decoded is List) {
+        items = decoded;
+      } else if (decoded is Map) {
+        items = (decoded['items'] ??
+            decoded['data'] ??
+            decoded['results'] ??
+            decoded['restaurants'] ??
+            []) as List<dynamic>;
+      } else {
+        items = const [];
+      }
+
+      if (myTurn != _requestSerial) return;
+
+      setState(() => _items = items);
 
       _rebuildMarkersFromItems();
-    } catch (e, st) {
-      debugPrint('[Search] ERROR: $e\n$st');
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _inFlight = false;
-        });
+
+      if (_markers.isNotEmpty) {
+        final pts = _markers.map((m) => m.position).toList();
+        final avgLat =
+            pts.map((e) => e.latitude).reduce((a, b) => a + b) / pts.length;
+        final avgLng =
+            pts.map((e) => e.longitude).reduce((a, b) => a + b) / pts.length;
+        _center = LatLng(avgLat, avgLng);
       }
+
+      await _fitMapToPinsRespectingRadius();
+    } catch (e) {
+      if (myTurn != _requestSerial) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (!mounted || myTurn != _requestSerial) return;
+      setState(() => _loading = false);
     }
   }
 
@@ -323,204 +312,325 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final radiusLabel = _radiusKm < 1
+        ? '${(_radiusKm * 1000).round()} m'
+        : '${_radiusKm.toStringAsFixed(1)} km';
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Restaurant Lookup'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {},
-          ),
-        ],
+        elevation: 0,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Stack(
         children: [
-          // --- Search controls ---
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _qCtrl,
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    labelText: 'Search',
-                    hintText: 'e.g. halal, pizza',
-                  ),
-                  onSubmitted: (_) => _search(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _nearCtrl,
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    labelText: 'Near',
-                    hintText: 'city/postcode (optional)',
-                  ),
-                  onSubmitted: (_) => _search(),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _loading ? null : _search,
-              icon: const Icon(Icons.search),
-              label: _loading
-                  ? const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-                  : const Text('Search'),
+          // --- Fullscreen Map ---
+          Positioned.fill(
+            child: GoogleMap(
+              initialCameraPosition: _fallbackCamera,
+              markers: _markers,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              tiltGesturesEnabled: false,
+              rotateGesturesEnabled: true,
+              zoomGesturesEnabled: true,
+              onMapCreated: (c) async {
+                _mapCtrl = c;
+                await UmmalyMapStyles.apply(c, context);
+                await _fitMapToPinsRespectingRadius();
+              },
             ),
           ),
-          const SizedBox(height: 16),
 
-          // --- Map above the results ---
-          SizedBox(
-            height: 260,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: GoogleMap(
-                initialCameraPosition: _fallbackCamera,
-                markers: _markers,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-                zoomControlsEnabled: false,
-                onMapCreated: (c) async {
-                  _mapCtrl = c;
-                  // Center on user (or fit markers) once the map is ready.
-                  await _fitMapToMarkers();
-                },
+          // --- Top overlay: search + radius controls ---
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.l, AppSpacing.l, AppSpacing.l, 0),
+              child: Material(
+                color: AppColors.surface,
+                elevation: 2,
+                borderRadius: BorderRadius.circular(AppRadius.l),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.l),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _qCtrl,
+                              textInputAction: TextInputAction.search,
+                              decoration: AppInput.decoration(
+                                label: 'Search',
+                                hint: 'e.g. halal, pizza',
+                                prefix: Icons.search,
+                              ),
+                              onSubmitted: (_) => _search(),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.l),
+                          Expanded(
+                            child: TextField(
+                              controller: _nearCtrl,
+                              textInputAction: TextInputAction.search,
+                              decoration: AppInput.decoration(
+                                label: 'Near',
+                                hint: 'city/postcode (optional)',
+                                prefix: Icons.place_outlined,
+                              ),
+                              onSubmitted: (_) => _search(),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.m),
+
+                      Row(
+                        children: [
+                          const Icon(Icons.radar,
+                              size: 20, color: AppColors.textSecondary),
+                          const SizedBox(width: AppSpacing.s),
+                          Expanded(
+                            child: Text(
+                              'Search radius: $radiusLabel',
+                              style: AppTextStyles.caption
+                                  .copyWith(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.s),
+                          _PresetChip(
+                              label: '1 km',
+                              onTap: () {
+                                setState(() => _radiusKm = 1);
+                                _search();
+                              }),
+                          const SizedBox(width: AppSpacing.s),
+                          _PresetChip(
+                              label: '5 km',
+                              onTap: () {
+                                setState(() => _radiusKm = 5);
+                                _search();
+                              }),
+                          const SizedBox(width: AppSpacing.s),
+                          _PresetChip(
+                              label: '10 km',
+                              onTap: () {
+                                setState(() => _radiusKm = 10);
+                                _search();
+                              }),
+                        ],
+                      ),
+                      Slider(
+                        value: _radiusKm,
+                        min: 0.5,
+                        max: 40.0,
+                        divisions: 79,
+                        label: radiusLabel,
+                        onChanged: (v) {
+                          setState(() => _radiusKm = v);
+                          _radiusDebounce?.cancel();
+                          _radiusDebounce =
+                              Timer(const Duration(milliseconds: 250), _search);
+                        },
+                        onChangeEnd: (_) {
+                          _radiusDebounce?.cancel();
+                          _search();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
 
-          // --- Errors / diagnostics ---
-          if (_error != null) ...[
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    'Exception: $_error',
-                    style: theme.textTheme.bodyMedium!
-                        .copyWith(color: theme.colorScheme.error),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _loading ? null : _search,
-                    child: const Text('Retry'),
-                  ),
-                ],
+          // --- Recenter button ---
+          Positioned(
+            top: 120, // below the search card
+            right: AppSpacing.l,
+            child: Material(
+              color: AppColors.surface,
+              shape: const CircleBorder(),
+              elevation: 2,
+              child: IconButton(
+                tooltip: 'Recenter',
+                onPressed: _fitMapToPinsRespectingRadius,
+                icon: const Icon(Icons.center_focus_strong),
               ),
             ),
-            const SizedBox(height: 12),
-          ],
-          if (_lastUrl != null)
-            _DiagnosticsCard(
-              url: _lastUrl!,
-              status: _lastStatus,
-              bodySnippet: _lastBodySnippet,
-            ),
+          ),
 
-          // --- Empty state ---
-          if (!_loading && _items.isEmpty && _error == null)
-            const Padding(
-              padding: EdgeInsets.only(top: 24),
-              child: Center(child: Text('No results yet — try a search.')),
-            ),
+          // --- Draggable results sheet ---
+          DraggableScrollableSheet(
+            initialChildSize: 0.20,
+            minChildSize: 0.12,
+            maxChildSize: 0.75,
+            snap: true,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppRadius.xl),
+                    topRight: Radius.circular(AppRadius.xl),
+                  ),
+                  boxShadow: AppCards.modalShadows,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: AppSpacing.s),
+                    // drag handle
+                    Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.l),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _error != null
+                              ? 'Error'
+                              : _items.isEmpty
+                              ? 'Results'
+                              : '${_items.length} places found',
+                          style: AppTextStyles.instruction,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    Expanded(
+                      child: _error != null
+                          ? ListView(
+                        controller: scrollController,
+                        padding:
+                        const EdgeInsets.all(AppSpacing.l),
+                        children: [
+                          Text(_error!,
+                              style: AppTextStyles.error,
+                              textAlign: TextAlign.center),
+                          const SizedBox(height: AppSpacing.m),
+                          ElevatedButton(
+                            style: AppButtons.dangerButton,
+                            onPressed: _loading ? null : _search,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      )
+                          : (_items.isEmpty && !_loading)
+                          ? ListView(
+                        controller: scrollController,
+                        padding:
+                        const EdgeInsets.all(AppSpacing.l),
+                        children: const [
+                          SizedBox(height: AppSpacing.s),
+                          Text(
+                            'No results yet — try a search.',
+                            style: AppTextStyles.instruction,
+                          ),
+                        ],
+                      )
+                          : ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.l, 0, AppSpacing.l, AppSpacing.l),
+                        itemCount: _items.length,
+                        itemBuilder: (context, i) {
+                          final m = _items[i] as Map;
+                          final name =
+                              m['name']?.toString() ?? 'Unknown';
+                          final address =
+                              m['address']?.toString() ?? '';
+                          final lat = _asDouble(m['latitude']);
+                          final lng = _asDouble(m['longitude']);
+                          final dist = (lat != null && lng != null)
+                              ? _distanceLabel(lat, lng)
+                              : null;
 
-          // --- Results list with tap-to-center ---
-          if (_items.isNotEmpty)
-            ..._items.map((e) {
-              final name =
-              (e is Map && e['name'] != null) ? e['name'].toString() : 'Unknown';
-              final address =
-              (e is Map && e['address'] != null) ? e['address'].toString() : '';
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: ListTile(
-                  leading: const Icon(Icons.restaurant),
-                  title: Text(name),
-                  subtitle: Text(address),
-                  onTap: () => _centerOnItem(e as Map),
+                          return RestaurantCardLite(
+                            name: name,
+                            address: address,
+                            rating: (m['rating'] as num?)?.toDouble(),
+                            ratingCount:
+                            (m['ratingCount'] as num?)?.toInt(),
+                            categories: (m['categories'] as List?)
+                                ?.map((e) => e.toString())
+                                .toList() ??
+                                const [],
+                            provider:
+                            m['provider']?.toString() ?? 'EXT',
+                            priceLevel:
+                            (m['priceLevel'] as num?)?.toInt(),
+                            distance: dist,
+                            onTap: () => _centerOnItem(m),
+                            onDirections: (lat != null && lng != null)
+                                ? () => _openInMaps(lat, lng, name)
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               );
-            }),
+            },
+          ),
         ],
       ),
+      floatingActionButton: (_loading)
+          ? FloatingActionButton(
+        onPressed: () {},
+        backgroundColor: AppColors.primary,
+        child: const SizedBox(
+          height: 22,
+          width: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.white,
+          ),
+        ),
+      )
+          : null,
     );
   }
 }
 
-class _DiagnosticsCard extends StatelessWidget {
-  final String url;
-  final int? status;
-  final String? bodySnippet;
-
-  const _DiagnosticsCard({
-    required this.url,
-    required this.status,
-    required this.bodySnippet,
-  });
+class _PresetChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _PresetChip({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Diagnostics', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(url, style: theme.textTheme.bodySmall),
-                ),
-                IconButton(
-                  tooltip: 'Copy URL',
-                  icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () => Clipboard.setData(ClipboardData(text: url)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text('Status: ${status ?? '-'}', style: theme.textTheme.bodySmall),
-            const SizedBox(height: 6),
-            if (bodySnippet != null) ...[
-              Text('Body (first 1.2k):', style: theme.textTheme.bodySmall),
-              const SizedBox(height: 4),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  bodySnippet!,
-                  style: theme.textTheme.bodySmall!
-                      .copyWith(fontFamily: 'monospace'),
-                ),
-              ),
-            ],
-          ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.m, vertical: AppSpacing.s),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
         ),
       ),
     );
@@ -528,7 +638,8 @@ class _DiagnosticsCard extends StatelessWidget {
 }
 
 class HttpClientBinding {
-  static Future<_HttpResponse> get(Uri uri, {Map<String, String>? headers}) async {
+  static Future<_HttpResponse> get(Uri uri,
+      {Map<String, String>? headers}) async {
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);

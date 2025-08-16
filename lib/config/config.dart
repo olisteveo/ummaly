@@ -11,7 +11,7 @@ class AppConfig {
   static const String _wifiIp = "192.168.0.3";    // your local machine IP on Wi-Fi/LAN
 
   // Can be just the host; _ensureScheme() will add https:// automatically.
-  static const String _ngrokUrl = "https://c6269f8c70a3.ngrok-free.app";
+  static const String _ngrokUrl = "https://19753d659c7a.ngrok-free.app";
 
   // flutter run --dart-define=API_BASE=https://my-api.example.com
   static const String _apiBaseOverride =

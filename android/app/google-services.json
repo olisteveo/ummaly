@@ -1,0 +1,38 @@
+{
+  "project_info": {
+    "project_number": "116981186736",
+    "project_id": "ummaly-c201b",
+    "storage_bucket": "ummaly-c201b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:116981186736:android:24569fe0a572c92c61fb75",
+        "android_client_info": {
+          "package_name": "com.ummaly.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "116981186736-7ctfon54697uhpcfuos9n7utar8hp68o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ummaly.app",
+            "certificate_hash": "806323b256b6e2e42b107c2594eb6e14470bee91"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKnbgDATsyI7jKnZFEg3_j3JeElG6JQyg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
