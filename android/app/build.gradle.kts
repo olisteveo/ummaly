@@ -1,29 +1,30 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    // ✅ Google Services plugin for Firebase
-    id("com.google.gms.google-services")
-    // ✅ Flutter Gradle Plugin must be applied last
-    id("dev.flutter.flutter-gradle-plugin")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services") // Firebase
+    id("dev.flutter.flutter-gradle-plugin") // Flutter plugin last
 }
 
 android {
-    namespace = "com.ummaly.app"   // ✅ MATCHES Firebase & Manifest
+    namespace = "com.ummaly.app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"   // ✅ Ensures NDK version matches plugins
 
+    // ✅ Use explicit compileOptions (Java 11)
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 
+    // ✅ Kotlin JVM target 11 (matches Java above)
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
+        // Optional: keep incremental off for stability on low-RAM
+        // freeCompilerArgs += listOf("-Xuse-k2")
     }
 
     defaultConfig {
-        applicationId = "com.ummaly.app"   // ✅ MUST MATCH google-services.json
-        minSdk = 23                        // ✅ Needed for Firebase
+        applicationId = "com.ummaly.app"
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -31,9 +32,16 @@ android {
 
     buildTypes {
         release {
-            // ✅ Debug signing so flutter run --release works
+            // Use debug signing so `flutter run --release` works locally
             signingConfig = signingConfigs.getByName("debug")
+            // You can enable minify later if you want
+            // isMinifyEnabled = false
         }
+    }
+
+    // Some plugins still read this flag; keep it true for legacy stability
+    packaging {
+        // nothing special right now
     }
 }
 
@@ -41,5 +49,4 @@ flutter {
     source = "../.."
 }
 
-// ✅ Google Services must be applied AFTER everything else
-apply(plugin = "com.google.gms.google-services")
+// (No toolchain config here on purpose)

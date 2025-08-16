@@ -9,10 +9,11 @@ environment:
 
 dependencies:
   http: ^1.2.0
-  dio: ^5.4.3+1   # ✅ NEW - For API requests to backend
+  dio: ^5.4.3+1   # For API requests to backend
   flutter:
     sdk: flutter
   geolocator: ^11.0.0
+  google_maps_flutter: ^2.7.0   # ✅ Google Maps (Flutter)
 
   # Core UI and icons
   cupertino_icons: ^1.0.8
@@ -28,7 +29,7 @@ dependencies:
 
   # State management
   provider: ^6.1.2
-  get: ^4.6.6   # ✅ Already added earlier - For reactive state management and navigation
+  get: ^4.6.6   # For reactive state management and navigation
 
   # Localization support
   easy_localization: ^3.0.3
@@ -36,7 +37,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^6.0.0
 
 flutter:
