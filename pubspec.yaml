@@ -34,6 +34,9 @@ dependencies:
   # Localization support
   easy_localization: ^3.0.3
 
+  # 📍 Open in Google/Apple Maps
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
