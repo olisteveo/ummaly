@@ -36,14 +36,30 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   GoogleMapController? _mapCtrl;
   final Set<Marker> _markers = <Marker>{};
   LatLng _center = const LatLng(51.5074, -0.1278); // London default
-  double _radiusKm = 5.0; // 0.5–40.0
+  double _radiusKm = 5.0; // stored internally in KM (0.5–40.0)
 
   static const _fallbackCamera =
   CameraPosition(target: LatLng(51.5074, -0.1278), zoom: 11);
 
+  // Sheet control (so the handle actually drags)
+  final DraggableScrollableController _sheetCtrl =
+  DraggableScrollableController();
+  static const double _sheetMin = 0.12;
+  static const double _sheetInit = 0.20;
+  static const double _sheetMax = 0.75;
+
   // UX helpers
   Timer? _radiusDebounce;
   int _requestSerial = 0;
+
+  // bootstrap guard (center on user once on load)
+  bool _didBootstrapCenter = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapLocationCenter(); // try to center on user ASAP
+  }
 
   @override
   void dispose() {
@@ -54,6 +70,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     super.dispose();
   }
 
+  // --- Units (KM vs MI) ---
+  bool get _useMiles {
+    final cc = Localizations.localeOf(context).countryCode?.toUpperCase();
+    return cc == 'GB' || cc == 'US' || cc == 'LR' || cc == 'MM'; // UK included
+  }
+
+  double get _kmToMi => 0.621371;
+  String _radiusLabel() {
+    if (_useMiles) {
+      final mi = _radiusKm * _kmToMi;
+      final digits = mi < 10 ? 1 : 0;
+      return '${mi.toStringAsFixed(digits)} mi';
+    } else {
+      if (_radiusKm < 1) return '${(_radiusKm * 1000).round()} m';
+      return '${_radiusKm.toStringAsFixed(1)} km';
+    }
+  }
+
+  // --- helpers ---
   double? _asDouble(dynamic v) {
     if (v is num) return v.toDouble();
     if (v is String) return double.tryParse(v);
@@ -84,10 +119,31 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
+  // Try to center the map on the user's location at startup
+  Future<void> _bootstrapLocationCenter() async {
+    if (_didBootstrapCenter) return;
+    _didBootstrapCenter = true;
+
+    final pos = await _tryGetPosition(); // sets _center if success
+    if (!mounted || pos == null) return;
+
+    if (_mapCtrl != null) {
+      await _mapCtrl!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: _center,
+            zoom: _zoomForRadiusMeters(_radiusKm * 1000),
+          ),
+        ),
+      );
+    }
+  }
+
+  // Zoom so a radius fits the screen width nicely
   double _zoomForRadiusMeters(double radiusMeters) {
     final r = radiusMeters.clamp(100.0, 80000.0);
     const world = 40075016.686; // meters at equator
-    const viewPortFraction = 0.6; // want diameter ~60% of width
+    const viewPortFraction = 0.6; // diameter ~60% of width
     final metersPerPixel = (r * 2) / (viewPortFraction * 256);
     final zoom = math.log(world / metersPerPixel) / math.ln2;
     return zoom.clamp(3.0, 21.0);
@@ -166,7 +222,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           markerId: MarkerId('r$i'),
           icon: BitmapDescriptor.defaultMarkerWithHue(275), // Ummaly hue
           position: LatLng(lat, lng),
-          infoWindow: InfoWindow(title: name, snippet: address),
+          // Tapping the info window opens directions now
+          infoWindow: InfoWindow(
+            title: name,
+            snippet: address,
+            onTap: () => _openInMaps(lat, lng, name),
+          ),
         ),
       );
     }
@@ -191,6 +252,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   String _distanceLabel(double lat, double lng) {
     final m =
     _haversineMeters(_center.latitude, _center.longitude, lat, lng);
+    if (_useMiles) {
+      final mi = m / 1609.344;
+      final digits = mi < 10 ? 1 : 0;
+      return '${mi.toStringAsFixed(digits)} mi away';
+    }
     return m < 1000
         ? '${m.round()} m away'
         : '${(m / 1000).toStringAsFixed(m < 10000 ? 1 : 0)} km away';
@@ -242,6 +308,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       final qp = <String, String>{
         'page': '1',
         'pageSize': '20',
+        // backend expects meters; keep internal in KM
         'radiusMeters': (_radiusKm * 1000).round().toString(),
         if (q.isNotEmpty) 'query': q,
         if (near.isNotEmpty) 'near': near,
@@ -273,6 +340,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       } else {
         items = const [];
       }
+
+      // TODO(backend): if you enrich items with Google Places details,
+      // surface keys like 'googleRating' and 'googleUserRatings' here,
+      // and optionally 'googlePlaceId' for deeplinks.
 
       if (myTurn != _requestSerial) return;
 
@@ -310,14 +381,36 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     );
   }
 
+  // drag the sheet using the pill
+  void _dragSheetByPixels(double deltaPixels) {
+    final h = MediaQuery.of(context).size.height;
+    final current = _sheetCtrl.size;
+    final delta = -deltaPixels / h;
+    final next = (current + delta).clamp(_sheetMin, _sheetMax);
+    _sheetCtrl.jumpTo(next);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final radiusLabel = _radiusKm < 1
-        ? '${(_radiusKm * 1000).round()} m'
-        : '${_radiusKm.toStringAsFixed(1)} km';
+    final radiusLabel = _radiusLabel();
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    // preset values shown to the user in their local unit
+    final presets = _useMiles ? [1.0, 3.0, 10.0] : [1.0, 5.0, 10.0];
+
+    void _applyPresetUnits(double valueInUnits) {
+      final km = _useMiles ? (valueInUnits / _kmToMi) : valueInUnits;
+      setState(() => _radiusKm = km);
+      _search();
+    }
+
+    String _labelForUnit(double valueInUnits) =>
+        _useMiles ? '${valueInUnits.toStringAsFixed(0)} mi'
+            : '${valueInUnits.toStringAsFixed(0)} km';
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false, // keep stack stable while keyboard shows
       appBar: AppBar(
         title: const Text('Restaurant Lookup'),
         elevation: 0,
@@ -340,7 +433,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               onMapCreated: (c) async {
                 _mapCtrl = c;
                 await UmmalyMapStyles.apply(c, context);
-                await _fitMapToPinsRespectingRadius();
+                await _bootstrapLocationCenter();      // NEW: center on user if available
+                await _fitMapToPinsRespectingRadius(); // smart fit
               },
             ),
           ),
@@ -390,42 +484,37 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       ),
                       const SizedBox(height: AppSpacing.m),
 
+                      // radius label on its own row (no crowding)
                       Row(
                         children: [
                           const Icon(Icons.radar,
                               size: 20, color: AppColors.textSecondary),
                           const SizedBox(width: AppSpacing.s),
-                          Expanded(
-                            child: Text(
-                              'Search radius: $radiusLabel',
+                          Text('Search radius',
                               style: AppTextStyles.caption
-                                  .copyWith(fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.s),
-                          _PresetChip(
-                              label: '1 km',
-                              onTap: () {
-                                setState(() => _radiusKm = 1);
-                                _search();
-                              }),
-                          const SizedBox(width: AppSpacing.s),
-                          _PresetChip(
-                              label: '5 km',
-                              onTap: () {
-                                setState(() => _radiusKm = 5);
-                                _search();
-                              }),
-                          const SizedBox(width: AppSpacing.s),
-                          _PresetChip(
-                              label: '10 km',
-                              onTap: () {
-                                setState(() => _radiusKm = 10);
-                                _search();
-                              }),
+                                  .copyWith(fontSize: 13)),
+                          const Spacer(),
+                          Text(radiusLabel,
+                              style: AppTextStyles.caption
+                                  .copyWith(fontWeight: FontWeight.w600)),
                         ],
                       ),
+                      const SizedBox(height: AppSpacing.s),
+
+                      // Presets wrap under label
+                      Wrap(
+                        spacing: AppSpacing.s,
+                        runSpacing: AppSpacing.s,
+                        children: [
+                          for (final p in presets)
+                            _PresetChip(
+                              label: _labelForUnit(p),
+                              onTap: () => _applyPresetUnits(p),
+                            ),
+                        ],
+                      ),
+
+                      // Slider (still uses KM internally)
                       Slider(
                         value: _radiusKm,
                         min: 0.5,
@@ -443,6 +532,16 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           _search();
                         },
                       ),
+
+                      // Search button (explicit, like before)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _loading ? null : _search,
+                          icon: const Icon(Icons.search),
+                          label: const Text('Search'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -452,7 +551,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
           // --- Recenter button ---
           Positioned(
-            top: 120, // below the search card
+            top: 140, // below the search card
             right: AppSpacing.l,
             child: Material(
               color: AppColors.surface,
@@ -468,12 +567,14 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
           // --- Draggable results sheet ---
           DraggableScrollableSheet(
-            initialChildSize: 0.20,
-            minChildSize: 0.12,
-            maxChildSize: 0.75,
+            controller: _sheetCtrl,
+            initialChildSize: _sheetInit,
+            minChildSize: _sheetMin,
+            maxChildSize: _sheetMax,
             snap: true,
             builder: (context, scrollController) {
               return Container(
+                padding: EdgeInsets.only(bottom: bottomInset), // keyboard safe
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: const BorderRadius.only(
@@ -485,19 +586,41 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: AppSpacing.s),
-                    // drag handle
-                    Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.black12,
-                        borderRadius: BorderRadius.circular(999),
+
+                    // drag handle – now actually drags the sheet
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onVerticalDragUpdate: (d) =>
+                          _dragSheetByPixels(d.primaryDelta ?? 0),
+                      onDoubleTap: () {
+                        final target =
+                        (_sheetCtrl.size < (_sheetMin + _sheetMax) / 2)
+                            ? 0.45
+                            : _sheetMin;
+                        _sheetCtrl.animateTo(
+                          target,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      child: Container(
+                        width: 56,
+                        height: 20,
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.black12,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.s),
+
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.l),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.l),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -505,16 +628,19 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                               ? 'Error'
                               : _items.isEmpty
                               ? 'Results'
-                              : '${_items.length} places found',
+                              : '${(_items.length)} places found',
                           style: AppTextStyles.instruction,
                         ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.s),
+
                     Expanded(
                       child: _error != null
                           ? ListView(
                         controller: scrollController,
+                        keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                         padding:
                         const EdgeInsets.all(AppSpacing.l),
                         children: [
@@ -532,6 +658,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           : (_items.isEmpty && !_loading)
                           ? ListView(
                         controller: scrollController,
+                        keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                         padding:
                         const EdgeInsets.all(AppSpacing.l),
                         children: const [
@@ -544,6 +672,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       )
                           : ListView.builder(
                         controller: scrollController,
+                        keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                         padding: const EdgeInsets.fromLTRB(
                             AppSpacing.l, 0, AppSpacing.l, AppSpacing.l),
                         itemCount: _items.length,
@@ -562,9 +692,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           return RestaurantCardLite(
                             name: name,
                             address: address,
-                            rating: (m['rating'] as num?)?.toDouble(),
-                            ratingCount:
-                            (m['ratingCount'] as num?)?.toInt(),
+                            rating: (m['rating'] as num?)?.toDouble() ??
+                                (m['googleRating'] as num?)?.toDouble(), // optional
+                            ratingCount: (m['ratingCount'] as num?)?.toInt() ??
+                                (m['googleUserRatings'] as num?)?.toInt(), // optional
                             categories: (m['categories'] as List?)
                                 ?.map((e) => e.toString())
                                 .toList() ??
