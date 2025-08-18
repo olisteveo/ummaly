@@ -41,7 +41,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   static const _fallbackCamera =
   CameraPosition(target: LatLng(51.5074, -0.1278), zoom: 11);
 
-  // Sheet control (so the handle actually drags)
+  // Sheet control
   final DraggableScrollableController _sheetCtrl =
   DraggableScrollableController();
   static const double _sheetMin = 0.12;
@@ -55,10 +55,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // bootstrap guard (center on user once on load)
   bool _didBootstrapCenter = false;
 
+  // Selection / expansion state
+  int _expandedIndex = -1; // single-open accordion (-1 = none)
+  String? _selectedMarkerId;
+
+  // Collapsible radius controls
+  bool _radiusExpanded = true;
+
+  // We measure the search card to position the sheet + map offset under it.
+  final GlobalKey _searchCardKey = GlobalKey();
+  double _searchCardBottomPx = 0.0;
+
+  double get _mapTopUiPaddingPx => _searchCardBottomPx + 8.0;
+
   @override
   void initState() {
     super.initState();
-    _bootstrapLocationCenter(); // try to center on user ASAP
+    _bootstrapLocationCenter();
+    // Measure after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSearchCard());
   }
 
   @override
@@ -204,6 +219,27 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
+  // Center but push the marker downwards so it’s not under the search header.
+  Future<void> _centerOnItemWithOffset(Map e,
+      {double? yOffsetPx}) async {
+    final lat = _asDouble(e['latitude']);
+    final lng = _asDouble(e['longitude']);
+    if (_mapCtrl == null || lat == null || lng == null) return;
+
+    final currentZoom = await _mapCtrl!.getZoomLevel();
+    final target = LatLng(lat, lng);
+    final sc = await _mapCtrl!.getScreenCoordinate(target);
+    final adjusted =
+    ScreenCoordinate(x: sc.x, y: (sc.y - (yOffsetPx ?? _mapTopUiPaddingPx)).toInt());
+    final newLatLng = await _mapCtrl!.getLatLng(adjusted);
+
+    await _mapCtrl!.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: newLatLng, zoom: math.max(currentZoom, 14)),
+      ),
+    );
+  }
+
   void _rebuildMarkersFromItems() {
     final markers = <Marker>{};
     for (var i = 0; i < _items.length; i++) {
@@ -216,18 +252,23 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
       final name = (e['name'] ?? '') as String? ?? '';
       final address = (e['address'] ?? '') as String? ?? '';
+      final id = 'r$i';
+
+      final isSelected = _expandedIndex == i; // selected == expanded item
+      final hue =
+      isSelected ? 140.0 /* green-ish */ : 275.0 /* Ummaly violet */;
 
       markers.add(
         Marker(
-          markerId: MarkerId('r$i'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(275), // Ummaly hue
+          markerId: MarkerId(id),
+          icon: BitmapDescriptor.defaultMarkerWithHue(hue),
           position: LatLng(lat, lng),
-          // Tapping the info window opens directions now
           infoWindow: InfoWindow(
             title: name,
             snippet: address,
             onTap: () => _openInMaps(lat, lng, name),
           ),
+          onTap: () => _onMarkerTap(i),
         ),
       );
     }
@@ -250,8 +291,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   String _distanceLabel(double lat, double lng) {
-    final m =
-    _haversineMeters(_center.latitude, _center.longitude, lat, lng);
+    final m = _haversineMeters(
+        _center.latitude, _center.longitude, lat, lng);
     if (_useMiles) {
       final mi = m / 1609.344;
       final digits = mi < 10 ? 1 : 0;
@@ -274,6 +315,63 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
+  // ---- SHEET / SEARCH-CARD MEASUREMENT & SNAP ----
+
+  void _measureSearchCard() {
+    final ctx = _searchCardKey.currentContext;
+    if (ctx == null) return;
+    final box = ctx.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final topLeft = box.localToGlobal(Offset.zero);
+    final bottom = topLeft.dy + box.size.height;
+    setState(() {
+      _searchCardBottomPx = bottom;
+    });
+  }
+
+  double _sizeForTopGapPx(double topGapPx) {
+    final h = MediaQuery.of(context).size.height;
+    if (h <= 0) return _sheetInit;
+    final desired = 1.0 - (topGapPx / h);
+    return desired.clamp(_sheetMin, _sheetMax);
+    // Top of sheet will sit at y = topGapPx
+  }
+
+  void _snapSheetUnderSearch() {
+    final target = _sizeForTopGapPx(_searchCardBottomPx + 8);
+    _sheetCtrl.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _toggleSheetSnapTap() {
+    final target = _sizeForTopGapPx(_searchCardBottomPx + 8);
+    final sz = _sheetCtrl.size;
+    final mid = (target + _sheetMin) / 2;
+    final goUp = sz < (mid - 0.02); // if mostly down, go up
+    _sheetCtrl.animateTo(
+      goUp ? target : _sheetMin,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _collapseSheet() {
+    _sheetCtrl.animateTo(
+      _sheetMin,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _expandSheetToContent() {
+    _snapSheetUnderSearch();
+  }
+
+  // ---- SEARCH ----
+
   Future<void> _search() async {
     if (_loading) return;
     FocusScope.of(context).unfocus();
@@ -283,6 +381,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       _error = null;
       _items = [];
       _markers.clear();
+      _expandedIndex = -1;
+      _selectedMarkerId = null;
     });
 
     final myTurn = ++_requestSerial;
@@ -310,6 +410,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         'pageSize': '20',
         // backend expects meters; keep internal in KM
         'radiusMeters': (_radiusKm * 1000).round().toString(),
+        'sort': 'distance',
         if (q.isNotEmpty) 'query': q,
         if (near.isNotEmpty) 'near': near,
         if (pos != null) 'lat': pos.latitude.toString(),
@@ -341,10 +442,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         items = const [];
       }
 
-      // TODO(backend): if you enrich items with Google Places details,
-      // surface keys like 'googleRating' and 'googleUserRatings' here,
-      // and optionally 'googlePlaceId' for deeplinks.
-
       if (myTurn != _requestSerial) return;
 
       setState(() => _items = items);
@@ -370,15 +467,31 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
-  Future<void> _centerOnItem(Map e) async {
-    final lat = _asDouble(e['latitude']);
-    final lng = _asDouble(e['longitude']);
-    if (_mapCtrl == null || lat == null || lng == null) return;
-    await _mapCtrl!.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: LatLng(lat, lng), zoom: 15),
-      ),
-    );
+  Future<void> _onMarkerTap(int index) async {
+    // Single-open accordion behavior
+    if (_expandedIndex == index) {
+      setState(() => _expandedIndex = -1);
+      _selectedMarkerId = null;
+    } else {
+      setState(() => _expandedIndex = index);
+      _selectedMarkerId = 'r$index';
+    }
+    _rebuildMarkersFromItems();
+    await _centerOnItemWithOffset(_items[index] as Map);
+    _expandSheetToContent();
+  }
+
+  Future<void> _onCardTap(int index, Map m) async {
+    if (_expandedIndex == index) {
+      setState(() => _expandedIndex = -1);
+      _selectedMarkerId = null;
+    } else {
+      setState(() => _expandedIndex = index);
+      _selectedMarkerId = 'r$index';
+    }
+    _rebuildMarkersFromItems();
+    await _centerOnItemWithOffset(m);
+    _expandSheetToContent();
   }
 
   // drag the sheet using the pill
@@ -388,6 +501,15 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     final delta = -deltaPixels / h;
     final next = (current + delta).clamp(_sheetMin, _sheetMax);
     _sheetCtrl.jumpTo(next);
+  }
+
+  // Toggle radius panel (collapsible)
+  void _toggleRadius() {
+    setState(() => _radiusExpanded = !_radiusExpanded);
+    // Re-measure after animation completes
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSearchCard());
+    // If the sheet is snapped under the card, keep it snapped under new height
+    Future.delayed(const Duration(milliseconds: 220), _snapSheetUnderSearch);
   }
 
   @override
@@ -410,7 +532,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false, // keep stack stable while keyboard shows
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text('Restaurant Lookup'),
         elevation: 0,
@@ -433,18 +555,19 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               onMapCreated: (c) async {
                 _mapCtrl = c;
                 await UmmalyMapStyles.apply(c, context);
-                await _bootstrapLocationCenter();      // NEW: center on user if available
-                await _fitMapToPinsRespectingRadius(); // smart fit
+                await _bootstrapLocationCenter();
+                await _fitMapToPinsRespectingRadius();
               },
             ),
           ),
 
-          // --- Top overlay: search + radius controls ---
+          // --- Top overlay: search + collapsible radius controls ---
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.l, AppSpacing.l, AppSpacing.l, 0),
+              padding:
+              const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, 0),
               child: Material(
+                key: _searchCardKey,
                 color: AppColors.surface,
                 elevation: 2,
                 borderRadius: BorderRadius.circular(AppRadius.l),
@@ -464,7 +587,17 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                 hint: 'e.g. halal, pizza',
                                 prefix: Icons.search,
                               ),
-                              onSubmitted: (_) => _search(),
+                              onTap: _collapseSheet,
+                              onSubmitted: (_) {
+                                // collapse radius for more map on search
+                                if (_radiusExpanded) {
+                                  setState(() => _radiusExpanded = false);
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) => _measureSearchCard());
+                                }
+                                _search();
+                                _snapSheetUnderSearch();
+                              },
                             ),
                           ),
                           const SizedBox(width: AppSpacing.l),
@@ -477,67 +610,110 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                 hint: 'city/postcode (optional)',
                                 prefix: Icons.place_outlined,
                               ),
-                              onSubmitted: (_) => _search(),
+                              onTap: _collapseSheet,
+                              onSubmitted: (_) {
+                                if (_radiusExpanded) {
+                                  setState(() => _radiusExpanded = false);
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) => _measureSearchCard());
+                                }
+                                _search();
+                                _snapSheetUnderSearch();
+                              },
                             ),
                           ),
                         ],
                       ),
+
+                      // Header row with chevron to expand/collapse radius controls
                       const SizedBox(height: AppSpacing.m),
-
-                      // radius label on its own row (no crowding)
-                      Row(
-                        children: [
-                          const Icon(Icons.radar,
-                              size: 20, color: AppColors.textSecondary),
-                          const SizedBox(width: AppSpacing.s),
-                          Text('Search radius',
-                              style: AppTextStyles.caption
-                                  .copyWith(fontSize: 13)),
-                          const Spacer(),
-                          Text(radiusLabel,
-                              style: AppTextStyles.caption
-                                  .copyWith(fontWeight: FontWeight.w600)),
-                        ],
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: _toggleRadius,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.radar,
+                                  size: 20, color: AppColors.textSecondary),
+                              const SizedBox(width: AppSpacing.s),
+                              Text('Search radius',
+                                  style: AppTextStyles.caption.copyWith(fontSize: 13)),
+                              const Spacer(),
+                              Text(
+                                radiusLabel,
+                                style: AppTextStyles.caption
+                                    .copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: AppSpacing.s),
+                              AnimatedRotation(
+                                turns: _radiusExpanded ? 0.5 : 0.0,
+                                duration: const Duration(milliseconds: 180),
+                                child: const Icon(Icons.expand_more, size: 22),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.s),
 
-                      // Presets wrap under label
-                      Wrap(
-                        spacing: AppSpacing.s,
-                        runSpacing: AppSpacing.s,
-                        children: [
-                          for (final p in presets)
-                            _PresetChip(
-                              label: _labelForUnit(p),
-                              onTap: () => _applyPresetUnits(p),
+                      // Collapsible content
+                      AnimatedCrossFade(
+                        firstChild: const SizedBox.shrink(),
+                        secondChild: Column(
+                          children: [
+                            const SizedBox(height: AppSpacing.s),
+                            Wrap(
+                              spacing: AppSpacing.s,
+                              runSpacing: AppSpacing.s,
+                              children: [
+                                for (final p in presets)
+                                  _PresetChip(
+                                    label: _labelForUnit(p),
+                                    onTap: () => _applyPresetUnits(p),
+                                  ),
+                              ],
                             ),
-                        ],
+                            Slider(
+                              value: _radiusKm,
+                              min: 0.5,
+                              max: 40.0,
+                              divisions: 79,
+                              label: radiusLabel,
+                              onChangeStart: (_) => _collapseSheet(),
+                              onChanged: (v) {
+                                setState(() => _radiusKm = v);
+                                _radiusDebounce?.cancel();
+                                _radiusDebounce =
+                                    Timer(const Duration(milliseconds: 250), _search);
+                              },
+                              onChangeEnd: (_) {
+                                _radiusDebounce?.cancel();
+                                _search();
+                              },
+                            ),
+                          ],
+                        ),
+                        crossFadeState: _radiusExpanded
+                            ? CrossFadeState.showSecond
+                            : CrossFadeState.showFirst,
+                        duration: const Duration(milliseconds: 180),
                       ),
 
-                      // Slider (still uses KM internally)
-                      Slider(
-                        value: _radiusKm,
-                        min: 0.5,
-                        max: 40.0,
-                        divisions: 79,
-                        label: radiusLabel,
-                        onChanged: (v) {
-                          setState(() => _radiusKm = v);
-                          _radiusDebounce?.cancel();
-                          _radiusDebounce =
-                              Timer(const Duration(milliseconds: 250), _search);
-                        },
-                        onChangeEnd: (_) {
-                          _radiusDebounce?.cancel();
-                          _search();
-                        },
-                      ),
-
-                      // Search button (explicit, like before)
+                      // Search button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _loading ? null : _search,
+                          onPressed: _loading
+                              ? null
+                              : () {
+                            if (_radiusExpanded) {
+                              setState(() => _radiusExpanded = false);
+                              WidgetsBinding.instance.addPostFrameCallback(
+                                      (_) => _measureSearchCard());
+                            }
+                            _search();
+                            _snapSheetUnderSearch();
+                          },
                           icon: const Icon(Icons.search),
                           label: const Text('Search'),
                         ),
@@ -551,7 +727,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
           // --- Recenter button ---
           Positioned(
-            top: 140, // below the search card
+            top: 140, // stays roughly below the search card; OK with snap
             right: AppSpacing.l,
             child: Material(
               color: AppColors.surface,
@@ -574,7 +750,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             snap: true,
             builder: (context, scrollController) {
               return Container(
-                padding: EdgeInsets.only(bottom: bottomInset), // keyboard safe
+                padding: EdgeInsets.only(bottom: bottomInset),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: const BorderRadius.only(
@@ -585,55 +761,46 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 ),
                 child: Column(
                   children: [
-                    const SizedBox(height: AppSpacing.s),
-
-                    // drag handle – now actually drags the sheet
+                    // Top bar (big hit target): handle + title; tap toggles snap
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
+                      onTap: _toggleSheetSnapTap,
                       onVerticalDragUpdate: (d) =>
                           _dragSheetByPixels(d.primaryDelta ?? 0),
-                      onDoubleTap: () {
-                        final target =
-                        (_sheetCtrl.size < (_sheetMin + _sheetMax) / 2)
-                            ? 0.45
-                            : _sheetMin;
-                        _sheetCtrl.animateTo(
-                          target,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOut,
-                        );
-                      },
-                      child: Container(
-                        width: 56,
-                        height: 20,
-                        alignment: Alignment.center,
-                        child: Container(
-                          width: 44,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.black12,
-                            borderRadius: BorderRadius.circular(999),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: AppSpacing.s),
+                          Container(
+                            width: 56,
+                            height: 20,
+                            alignment: Alignment.center,
+                            child: Container(
+                              width: 44,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Colors.black12,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
                           ),
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.l, vertical: AppSpacing.xs),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                _error != null
+                                    ? 'Error'
+                                    : _items.isEmpty
+                                    ? 'Results'
+                                    : '${(_items.length)} places found',
+                                style: AppTextStyles.instruction,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-
-                    Padding(
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.l),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _error != null
-                              ? 'Error'
-                              : _items.isEmpty
-                              ? 'Results'
-                              : '${(_items.length)} places found',
-                          style: AppTextStyles.instruction,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s),
 
                     Expanded(
                       child: _error != null
@@ -641,8 +808,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         controller: scrollController,
                         keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding:
-                        const EdgeInsets.all(AppSpacing.l),
+                        padding: const EdgeInsets.all(AppSpacing.l),
                         children: [
                           Text(_error!,
                               style: AppTextStyles.error,
@@ -679,10 +845,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         itemCount: _items.length,
                         itemBuilder: (context, i) {
                           final m = _items[i] as Map;
-                          final name =
-                              m['name']?.toString() ?? 'Unknown';
-                          final address =
-                              m['address']?.toString() ?? '';
+                          final name = m['name']?.toString() ?? 'Unknown';
+                          final address = m['address']?.toString() ?? '';
                           final lat = _asDouble(m['latitude']);
                           final lng = _asDouble(m['longitude']);
                           final dist = (lat != null && lng != null)
@@ -693,19 +857,27 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                             name: name,
                             address: address,
                             rating: (m['rating'] as num?)?.toDouble() ??
-                                (m['googleRating'] as num?)?.toDouble(), // optional
-                            ratingCount: (m['ratingCount'] as num?)?.toInt() ??
-                                (m['googleUserRatings'] as num?)?.toInt(), // optional
+                                (m['googleRating'] as num?)?.toDouble(),
+                            ratingCount:
+                            (m['ratingCount'] as num?)?.toInt() ??
+                                (m['googleUserRatings'] as num?)
+                                    ?.toInt(),
                             categories: (m['categories'] as List?)
                                 ?.map((e) => e.toString())
                                 .toList() ??
                                 const [],
-                            provider:
-                            m['provider']?.toString() ?? 'EXT',
-                            priceLevel:
-                            (m['priceLevel'] as num?)?.toInt(),
+                            provider: m['provider']?.toString().toUpperCase() ??
+                                'EXT',
+                            priceLevel: (m['priceLevel'] as num?)?.toInt(),
                             distance: dist,
-                            onTap: () => _centerOnItem(m),
+                            phone: m['phone']?.toString(),
+                            website: m['website']?.toString(),
+                            openingNow: m['openingNow'] as bool?,
+                            openingHours: (m['openingHours'] as List?)
+                                ?.map((e) => e.toString())
+                                .toList(),
+                            isExpanded: i == _expandedIndex,
+                            onTap: () => _onCardTap(i, m),
                             onDirections: (lat != null && lng != null)
                                 ? () => _openInMaps(lat, lng, name)
                                 : null,
@@ -769,8 +941,7 @@ class _PresetChip extends StatelessWidget {
 }
 
 class HttpClientBinding {
-  static Future<_HttpResponse> get(Uri uri,
-      {Map<String, String>? headers}) async {
+  static Future<_HttpResponse> get(Uri uri, {Map<String, String>? headers}) async {
     final client = HttpClient();
     try {
       final req = await client.getUrl(uri);

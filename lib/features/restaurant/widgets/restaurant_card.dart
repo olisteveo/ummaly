@@ -1,9 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:ummaly/core/models/restaurant.dart'; // canonical import
 import 'package:ummaly/theme/styles.dart';
 
+// Helper: choose the "today" line from Google-style opening hours
+String _todayHoursLine(List<String> lines) {
+  if (lines.isEmpty) return '';
+  const days = [
+    'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'
+  ];
+  final i = DateTime.now().weekday - 1; // Mon=1
+  final today = days[i];
+  return lines.firstWhere(
+        (l) => l.startsWith(today),
+    orElse: () => lines.first,
+  );
+}
+
+ButtonStyle _pillBtn(BuildContext context) => OutlinedButton.styleFrom(
+  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+  shape: const StadiumBorder(),
+  side: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.6)),
+);
+
 /// Rich card used elsewhere in the app.
-/// Supports optional distance + actions and uses app tokens.
 class RestaurantCard extends StatelessWidget {
   const RestaurantCard({
     super.key,
@@ -25,7 +46,9 @@ class RestaurantCard extends StatelessWidget {
       final cnt = item.ratingCount != null ? ' (${item.ratingCount})' : '';
       meta.add('${item.rating!.toStringAsFixed(1)}★$cnt');
     }
-    if (item.categories.isNotEmpty) meta.add(item.categories.take(3).join(' • '));
+    if (item.categories.isNotEmpty) {
+      meta.add(item.categories.take(3).join(' • '));
+    }
     if (distance != null && distance!.isNotEmpty) meta.add(distance!);
 
     return Card(
@@ -94,7 +117,7 @@ class RestaurantCard extends StatelessWidget {
 }
 
 /// Lightweight card for raw search results (no dependency on Restaurant ctor).
-/// Used by the Search screen’s sheet.
+/// Collapsed by default; when expanded, shows a tidy actions row and today's hours.
 class RestaurantCardLite extends StatelessWidget {
   const RestaurantCardLite({
     super.key,
@@ -106,6 +129,11 @@ class RestaurantCardLite extends StatelessWidget {
     this.ratingCount,
     this.priceLevel,
     this.distance,
+    this.phone,
+    this.website,
+    this.openingNow,
+    this.openingHours,
+    required this.isExpanded,
     this.onTap,
     this.onDirections,
   });
@@ -118,6 +146,15 @@ class RestaurantCardLite extends StatelessWidget {
   final int? ratingCount;
   final int? priceLevel;
   final String? distance;
+
+  // Lazy-loaded details
+  final String? phone;
+  final String? website;
+  final bool? openingNow;
+  final List<String>? openingHours;
+
+  final bool isExpanded;
+
   final VoidCallback? onTap;
   final VoidCallback? onDirections;
 
@@ -171,6 +208,67 @@ class RestaurantCardLite extends StatelessWidget {
                         ),
                       ],
                     ),
+
+                    // Expanded details
+                    if (isExpanded) ...[
+                      const SizedBox(height: AppSpacing.s),
+
+                      // Compact status chip (Open/Closed)
+                      if (openingNow != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: Chip(
+                            avatar: Icon(
+                              openingNow! ? Icons.check_circle : Icons.cancel,
+                              size: 16,
+                              color: openingNow! ? Colors.green : Colors.redAccent,
+                            ),
+                            label: Text(openingNow! ? 'Open now' : 'Closed'),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: const VisualDensity(vertical: -4, horizontal: -4),
+                          ),
+                        ),
+
+                      // Primary actions: Call / Website / Directions
+                      Wrap(
+                        spacing: AppSpacing.s,
+                        runSpacing: AppSpacing.s,
+                        children: [
+                          if (phone != null && phone!.isNotEmpty)
+                            OutlinedButton.icon(
+                              style: _pillBtn(context),
+                              onPressed: () => launchUrl(Uri.parse('tel:$phone')),
+                              icon: const Icon(Icons.call, size: 16),
+                              label: Text(phone!, overflow: TextOverflow.ellipsis),
+                            ),
+                          if (website != null && website!.isNotEmpty)
+                            OutlinedButton.icon(
+                              style: _pillBtn(context),
+                              onPressed: () => launchUrl(Uri.parse(website!), mode: LaunchMode.externalApplication),
+                              icon: const Icon(Icons.language, size: 16),
+                              label: const Text('Website'),
+                            ),
+                          if (onDirections != null)
+                            OutlinedButton.icon(
+                              style: _pillBtn(context),
+                              onPressed: onDirections,
+                              icon: const Icon(Icons.directions, size: 16),
+                              label: const Text('Directions'),
+                            ),
+                        ],
+                      ),
+
+                      if (openingHours != null && openingHours!.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          _todayHoursLine(openingHours!),
+                          style: AppTextStyles.caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+
                     const SizedBox(height: AppSpacing.s),
                     Wrap(
                       spacing: AppSpacing.s,
@@ -192,12 +290,11 @@ class RestaurantCardLite extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onDirections != null)
-                IconButton(
-                  onPressed: onDirections,
-                  icon: const Icon(Icons.directions),
-                  tooltip: 'Open in Maps',
-                ),
+              // caret to hint expand/collapse
+              Padding(
+                padding: const EdgeInsets.only(left: AppSpacing.s, top: 2),
+                child: Icon(isExpanded ? Icons.expand_less : Icons.expand_more, size: 20, color: Colors.black45),
+              ),
             ],
           ),
         ),
