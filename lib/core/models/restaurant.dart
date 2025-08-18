@@ -1,3 +1,4 @@
+// core/models/restaurant.dart
 class Restaurant {
   final String provider;
   final String externalId;
@@ -11,6 +12,8 @@ class Restaurant {
   final List<String> categories;
   final String? phone;
   final String? website;
+  final bool? openingNow;
+  final List<String>? openingHours;
 
   Restaurant({
     required this.provider,
@@ -25,6 +28,8 @@ class Restaurant {
     required this.categories,
     this.phone,
     this.website,
+    this.openingNow,
+    this.openingHours,
   });
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
@@ -33,27 +38,16 @@ class Restaurant {
       externalId: json['externalId'] ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
-      latitude: (json['latitude'] is num)
-          ? (json['latitude'] as num).toDouble()
-          : null,
-      longitude: (json['longitude'] is num)
-          ? (json['longitude'] as num).toDouble()
-          : null,
-      rating: (json['rating'] is num)
-          ? (json['rating'] as num).toDouble()
-          : null,
-      ratingCount: (json['ratingCount'] is num)
-          ? (json['ratingCount'] as num).toInt()
-          : null,
-      priceLevel: (json['priceLevel'] is num)
-          ? (json['priceLevel'] as num).toInt()
-          : null,
-      categories: (json['categories'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ??
-          const [],
+      latitude: (json['latitude'] is num) ? (json['latitude'] as num).toDouble() : null,
+      longitude: (json['longitude'] is num) ? (json['longitude'] as num).toDouble() : null,
+      rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : null,
+      ratingCount: (json['ratingCount'] is num) ? (json['ratingCount'] as num).toInt() : null,
+      priceLevel: (json['priceLevel'] is num) ? (json['priceLevel'] as num).toInt() : null,
+      categories: (json['categories'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       phone: json['phone'],
       website: json['website'],
+      openingNow: json['openingNow'] is bool ? json['openingNow'] as bool : null,
+      openingHours: (json['openingHours'] as List?)?.map((e) => e.toString()).toList(),
     );
   }
 }
