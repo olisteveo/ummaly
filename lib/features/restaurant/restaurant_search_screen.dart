@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ummaly/theme/styles.dart';
@@ -36,6 +36,46 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   bool _loading = false;
   String? _error;
   List<dynamic> _items = [];
+
+  // Track per-item submit spinners for "Mark as halal"
+  final Set<int> _submittingIdx = <int>{};
+
+  // Persisted memory of my proposals (across sessions)
+  static const String _prefsKeyProposed = 'halalProposedKeys';
+  final Map<String, bool> _alreadyProposedByMe = <String, bool>{};
+  final Map<String, int> _localReportCounts = <String, int>{};
+
+  String _placeKey(Map m) {
+    final ext = m['externalId']?.toString();
+    if (ext != null && ext.isNotEmpty) return 'g:$ext';
+    final pid = m['googlePlaceId']?.toString();
+    if (pid != null && pid.isNotEmpty) return 'g:$pid';
+    final id = m['id']?.toString();
+    return (id != null && id.isNotEmpty) ? id : '';
+  }
+
+  Future<void> _loadLocalProposals() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_prefsKeyProposed) ?? const <String>[];
+      setState(() {
+        for (final k in saved) {
+          _alreadyProposedByMe[k] = true;
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveLocalProposalKey(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_prefsKeyProposed) ?? <String>[];
+      if (!saved.contains(key)) {
+        saved.add(key);
+        await prefs.setStringList(_prefsKeyProposed, saved);
+      }
+    } catch (_) {}
+  }
 
   // Map
   GoogleMapController? _mapCtrl;
@@ -67,15 +107,16 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   double _searchCardBottomPx = 0.0;
   double get _mapTopUiPaddingPx => _searchCardBottomPx + 8.0;
 
-  // NEW: keep a handle to the results ListView’s controller so we can auto‑scroll.
+  // Keep a handle to the results ListView’s controller so we can auto-scroll.
   ScrollController? _resultsScrollCtrl;
 
-  // NEW: one GlobalKey per list item to ensureVisible() precisely.
+  // One GlobalKey per list item to ensureVisible() precisely.
   List<GlobalKey> _itemKeys = const [];
 
   @override
   void initState() {
     super.initState();
+    _loadLocalProposals();
     _bootstrapLocationCenter();
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureSearchCard());
   }
@@ -113,6 +154,20 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     if (v is num) return v.toDouble();
     if (v is String) return double.tryParse(v);
     return null;
+  }
+
+  bool _isTrue(dynamic x) => x == true;
+  int _asInt(dynamic x) => (x is num) ? x.toInt() : 0;
+
+  // Build proposals endpoint from restaurantsSearchEndpoint host.
+  Uri _halalProposalsUri() {
+    final rs = Uri.parse(Config.restaurantsSearchEndpoint);
+    return Uri(
+      scheme: rs.scheme,
+      host: rs.host,
+      port: rs.hasPort ? rs.port : null,
+      path: '/api/halal/proposals',
+    );
   }
 
   Future<Position?> _tryGetPosition() async {
@@ -231,7 +286,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     final currentZoom = await _mapCtrl!.getZoomLevel();
     final target = LatLng(lat, lng);
 
-    // Compute an offset that accounts for the header and partially-open sheet.
     final headerPad = _mapTopUiPaddingPx;
     final sheetBias = 92.0; // approx. header + handle space of sheet
     final totalYOffset = (yOffsetPx ?? (headerPad + sheetBias));
@@ -292,8 +346,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     double toRad(double d) => d * (math.pi / 180.0);
     final dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
     final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(toRad(lat1)) * math.cos(toRad(lat2)) *
-            math.sin(dLon / 2) * math.sin(dLon / 2);
+        math.cos(toRad(lat1)) *
+            math.cos(toRad(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
     return 2 * R * math.asin(math.sqrt(a));
   }
 
@@ -318,6 +374,64 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     } else {
       await launchUrl(apple, mode: LaunchMode.externalApplication);
     }
+  }
+
+  Future<void> _callPhone(String phone) async {
+    final sanitized = phone.replaceAll(' ', '');
+    final uri = Uri.parse('tel:$sanitized');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _openWebsite(String url) async {
+    Uri uri;
+    try {
+      uri = Uri.parse(url);
+    } catch (_) {
+      return;
+    }
+    if (!uri.hasScheme) {
+      uri = Uri.parse('https://$url');
+    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  // ===== Dialogs / toasts =====
+  Future<String?> _promptEvidence() async {
+    final ctrl = TextEditingController();
+    String? val;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Optional evidence'),
+          content: TextField(
+            controller: ctrl,
+            decoration: const InputDecoration(
+              hintText: 'e.g., “HMC sticker on the door” or a URL',
+            ),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                val = ctrl.text.trim();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+    return (val != null && val!.isEmpty) ? null : val;
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ===== Sheet sizing / snapping =====
@@ -392,7 +506,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       _markers.clear();
       _expandedIndex = -1;
       _selectedMarkerId = null;
-      _itemKeys = const []; // NEW: reset keys on new search
+      _itemKeys = const []; // reset keys on new search
+      _submittingIdx.clear();
     });
 
     final myTurn = ++_requestSerial;
@@ -454,8 +569,26 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
       if (myTurn != _requestSerial) return;
 
-      // NEW: build keys once we know the item count
+      // Build keys once we know the item count and fold in local vote memory
       _itemKeys = List<GlobalKey>.generate(items.length, (_) => GlobalKey());
+
+      for (final e in items) {
+        if (e is! Map) continue;
+        final k = _placeKey(e);
+        if (k.isEmpty) continue;
+
+        if (_alreadyProposedByMe[k] == true) {
+          e['alreadyProposedByMe'] = true;
+        }
+
+        final localCnt = _localReportCounts[k];
+        if (localCnt != null) {
+          final current = _asInt(e['communityHalalCount']);
+          if (localCnt > current) {
+            e['communityHalalCount'] = localCnt;
+          }
+        }
+      }
 
       setState(() => _items = items);
       _rebuildMarkersFromItems();
@@ -481,7 +614,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   // ===== Selection handlers =====
   Future<void> _onMarkerTap(int index) async {
-    // Toggle expanded card to match pin selection
     if (_expandedIndex == index) {
       setState(() => _expandedIndex = -1);
       _selectedMarkerId = null;
@@ -491,10 +623,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
     _rebuildMarkersFromItems();
 
-    // Center the map with extra offset so pin is clearly visible
     await _centerOnItemWithOffset(_items[index] as Map);
 
-    // NEW: auto‑scroll list to the corresponding card
     _scrollToIndex(index);
 
     _expandSheetToContent();
@@ -512,13 +642,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
     await _centerOnItemWithOffset(m);
 
-    // NEW: ensure the tapped card comes into view (in case user collapsed list)
     _scrollToIndex(index);
 
     _expandSheetToContent();
   }
 
-  // NEW: Smoothly scroll the results list to a given index using GlobalKey.
+  // Smoothly scroll the results list to a given index using GlobalKey.
   void _scrollToIndex(int index) {
     try {
       final key = (index >= 0 && index < _itemKeys.length) ? _itemKeys[index] : null;
@@ -526,21 +655,141 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       if (ctx != null) {
         Scrollable.ensureVisible(
           ctx,
-          alignment: 0.08, // keep it slightly below the header
+          alignment: 0.08,
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         );
       } else if (_resultsScrollCtrl != null) {
-        // Fallback: approx item height scroll (conservative step)
         _resultsScrollCtrl!.animateTo(
           _resultsScrollCtrl!.offset + 180.0,
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOut,
         );
       }
-    } catch (_) {
-      // noop
+    } catch (_) {}
+  }
+
+  // ===== Proposal submit =====
+  bool _canPropose(Map m) {
+    final provider = (m['provider']?.toString() ?? '').toLowerCase();
+    final hasGoogleId = (m['externalId']?.toString().isNotEmpty ?? false);
+    final isVerified = _isTrue(m['halalVerified']);
+    final already = m['alreadyProposedByMe'] == true;
+    return provider == 'google' && hasGoogleId && !isVerified && !already;
+  }
+
+  Future<void> _submitProposal(int index, Map m) async {
+    if (_submittingIdx.contains(index)) return;
+
+    final key = _placeKey(m);
+    if (key.isNotEmpty && _alreadyProposedByMe[key] == true) {
+      _toast('You already submitted a report for this place.');
+      return;
     }
+
+    final evidence = await _promptEvidence();
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) {
+      _toast('Not signed in.');
+      return;
+    }
+
+    final lat = _asDouble(m['latitude']);
+    final lng = _asDouble(m['longitude']);
+    final googlePlaceId = m['externalId']?.toString() ?? '';
+
+    if (googlePlaceId.isEmpty || lat == null || lng == null) {
+      _toast('Missing place information.');
+      return;
+    }
+
+    setState(() => _submittingIdx.add(index));
+
+    try {
+      final body = jsonEncode({
+        'googlePlaceId': googlePlaceId,
+        'evidenceText': evidence,
+        'evidenceUrls': <String>[],
+        'name': m['name']?.toString() ?? '',
+        'lat': lat,
+        'lng': lng,
+        'address': m['address']?.toString(),
+      });
+
+      final resp = await HttpClientBinding.post(
+        _halalProposalsUri(),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+
+      if (resp.statusCode == 409) {
+        if (key.isNotEmpty) {
+          _alreadyProposedByMe[key] = true;
+          _saveLocalProposalKey(key);
+        }
+        setState(() {
+          m['alreadyProposedByMe'] = true;
+        });
+        _toast('You already submitted a report for this place.');
+        return;
+      }
+
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw Exception('Server responded ${resp.statusCode}');
+      }
+
+      // Optimistic bump + mark submitted + persist
+      final current = _asInt(m['communityHalalCount']);
+      final next = current + 1;
+
+      if (key.isNotEmpty) {
+        _alreadyProposedByMe[key] = true;
+        _localReportCounts[key] = next;
+        _saveLocalProposalKey(key);
+      }
+
+      setState(() {
+        m['communityHalalCount'] = next;
+        m['alreadyProposedByMe'] = true;
+      });
+
+      _toast('Thanks! We’ll review shortly.');
+    } catch (e) {
+      _toast('Failed to submit: ${e.toString().replaceFirst('Exception: ', '')}');
+    } finally {
+      if (mounted) setState(() => _submittingIdx.remove(index));
+    }
+  }
+
+  Widget _chip(String text, {Color? bg, Color? fg, IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        color: bg ?? Colors.black12,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: fg ?? Colors.black87),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: fg ?? Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ===== Build =====
@@ -579,7 +828,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             ),
           ),
 
-          // NEW: Re-center floating button (below the search header)
+          // Re-center floating button (below the search header)
           Positioned(
             top: _mapTopUiPaddingPx,
             right: AppSpacing.l,
@@ -610,13 +859,17 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 radiusLabel: _radiusLabel(),
                 onMeasureRequested: _measureSearchCard,
                 onCollapseSheet: _collapseSheet,
+
+                // Flipped behavior: when radius EXPANDS, drop results; when it collapses, do nothing.
                 onToggleRadius: () {
                   setState(() => _radiusExpanded = !_radiusExpanded);
                   WidgetsBinding.instance
                       .addPostFrameCallback((_) => _measureSearchCard());
-                  Future.delayed(
-                      const Duration(milliseconds: 220), _snapSheetUnderSearch);
+                  if (_radiusExpanded) {
+                    _collapseSheet();
+                  }
                 },
+
                 onSearchPressed: () {
                   if (_radiusExpanded) {
                     setState(() => _radiusExpanded = false);
@@ -673,7 +926,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             isEmpty: _items.isEmpty,
             onRetry: _search,
             bodyBuilder: (scrollController) {
-              // NEW: capture the controller once so _scrollToIndex can use it.
               _resultsScrollCtrl ??= scrollController;
 
               return ListView.builder(
@@ -692,8 +944,20 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                   final dist =
                   (lat != null && lng != null) ? _distanceLabel(lat, lng) : null;
 
+                  final halalVerified = _isTrue(m['halalVerified']);
+                  final claimedHalal = _isTrue(m['claimedHalal']);
+                  final communityCount = _asInt(m['communityHalalCount']);
+                  final canMark = _canPropose(m);
+                  final alreadyByMe = m['alreadyProposedByMe'] == true;
+
+                  final isExpanded = i == _expandedIndex;
+
+                  final phone = m['phone']?.toString();
+                  final website = m['website']?.toString();
+
                   return Container(
-                    key: (i < _itemKeys.length) ? _itemKeys[i] : null, // NEW: anchor
+                    key: (i < _itemKeys.length) ? _itemKeys[i] : null,
+                    margin: const EdgeInsets.only(bottom: AppSpacing.s),
                     child: RestaurantCardLite(
                       name: name,
                       address: address,
@@ -705,20 +969,81 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           ?.map((e) => e.toString())
                           .toList() ??
                           const [],
-                      provider: m['provider']?.toString().toUpperCase() ?? 'EXT',
+                      provider:
+                      m['provider']?.toString().toUpperCase() ?? 'EXT',
                       priceLevel: (m['priceLevel'] as num?)?.toInt(),
                       distance: dist,
-                      phone: m['phone']?.toString(),
-                      website: m['website']?.toString(),
+                      phone: phone,
+                      website: website,
                       openingNow: m['openingNow'] as bool?,
                       openingHours: (m['openingHours'] as List?)
                           ?.map((e) => e.toString())
                           .toList(),
-                      isExpanded: i == _expandedIndex,
+                      isExpanded: isExpanded,
                       onTap: () => _onCardTap(i, m),
                       onDirections: (lat != null && lng != null)
                           ? () => _openInMaps(lat, lng, name)
                           : null,
+                      onCall: (phone != null && phone.isNotEmpty)
+                          ? () => _callPhone(phone)
+                          : null,
+                      onOpenWebsite: (website != null && website.isNotEmpty)
+                          ? () => _openWebsite(website)
+                          : null,
+
+                      // Chips + action row INSIDE the card
+                      footer: !isExpanded
+                          ? null
+                          : Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (halalVerified)
+                            _chip(
+                              'Halal Verified',
+                              bg: const Color(0xFFE6F5EC),
+                              fg: const Color(0xFF0A7F3F),
+                              icon: Icons.verified,
+                            ),
+                          if (!halalVerified &&
+                              (claimedHalal || communityCount > 0))
+                            _chip(
+                              communityCount > 0
+                                  ? 'Claimed halal • $communityCount reports'
+                                  : 'Claimed halal',
+                              bg: const Color(0xFFFFF3E0),
+                              fg: const Color(0xFF9A5B00),
+                              icon: Icons.info_outline,
+                            ),
+                          if (alreadyByMe)
+                            _chip(
+                              'You reported',
+                              bg: const Color(0xFFE8EAF6),
+                              fg: const Color(0xFF303F9F),
+                              icon: Icons.person,
+                            ),
+                          if (!halalVerified && canMark)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: OutlinedButton.icon(
+                                icon: _submittingIdx.contains(i)
+                                    ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                    : const Icon(Icons.add_task),
+                                label: Text(alreadyByMe
+                                    ? 'Submitted'
+                                    : 'Mark as halal'),
+                                onPressed: _submittingIdx.contains(i)
+                                    ? null
+                                    : () => _submitProposal(i, m),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 },
