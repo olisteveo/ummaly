@@ -1,299 +1,319 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:ummaly/core/models/restaurant.dart'; // canonical import
 import 'package:ummaly/theme/styles.dart';
 
-// Helper: choose the "today" line from Google-style opening hours
-String _todayHoursLine(List<String> lines) {
-  if (lines.isEmpty) return '';
-  const days = [
-    'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'
-  ];
-  final i = DateTime.now().weekday - 1; // Mon=1
-  final today = days[i];
-  return lines.firstWhere(
-        (l) => l.startsWith(today),
-    orElse: () => lines.first,
-  );
-}
-
-ButtonStyle _pillBtn(BuildContext context) => OutlinedButton.styleFrom(
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-  visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-  shape: const StadiumBorder(),
-  side: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.6)),
-);
-
-/// Rich card used elsewhere in the app.
-class RestaurantCard extends StatelessWidget {
-  const RestaurantCard({
-    super.key,
-    required this.item,
-    this.distance,
-    this.onTap,
-    this.onDirections,
-  });
-
-  final Restaurant item;
-  final String? distance;
-  final VoidCallback? onTap;
-  final VoidCallback? onDirections;
-
-  @override
-  Widget build(BuildContext context) {
-    final meta = <String>[];
-    if (item.rating != null) {
-      final cnt = item.ratingCount != null ? ' (${item.ratingCount})' : '';
-      meta.add('${item.rating!.toStringAsFixed(1)}★$cnt');
-    }
-    if (item.categories.isNotEmpty) {
-      meta.add(item.categories.take(3).join(' • '));
-    }
-    if (distance != null && distance!.isNotEmpty) meta.add(distance!);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.s),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.l)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.l),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.l),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(item.name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700)),
-                  ),
-                  if (onDirections != null)
-                    IconButton(onPressed: onDirections, icon: const Icon(Icons.directions), tooltip: 'Open in Maps'),
-                ],
-              ),
-              if (meta.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(meta.join(' • '), style: AppTextStyles.caption),
-              ],
-              const SizedBox(height: AppSpacing.m),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.location_on_outlined, size: 18),
-                  const SizedBox(width: AppSpacing.s),
-                  Expanded(
-                    child: Text(
-                      item.address.isNotEmpty ? item.address : 'Address unavailable',
-                      style: AppTextStyles.body,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.m),
-              Wrap(
-                spacing: AppSpacing.s,
-                runSpacing: -AppSpacing.s,
-                children: [
-                  Chip(
-                    label: Text(item.provider.toUpperCase()),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: const VisualDensity(vertical: -4, horizontal: -4),
-                  ),
-                  if (item.priceLevel != null)
-                    Chip(
-                      label: Text('£' * item.priceLevel!.clamp(1, 4)),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: const VisualDensity(vertical: -4, horizontal: -4),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Lightweight card for raw search results (no dependency on Restaurant ctor).
-/// Collapsed by default; when expanded, shows a tidy actions row and today's hours.
+/// Lightweight, tappable restaurant card with an optional [footer] area that
+/// renders INSIDE the rounded container (useful for status chips / actions).
 class RestaurantCardLite extends StatelessWidget {
   const RestaurantCardLite({
     super.key,
     required this.name,
-    required this.address,
-    required this.provider,
-    required this.categories,
+    this.address,
     this.rating,
     this.ratingCount,
+    this.categories = const [],
+    this.provider,
     this.priceLevel,
     this.distance,
     this.phone,
     this.website,
     this.openingNow,
     this.openingHours,
-    required this.isExpanded,
+    this.isExpanded = false,
     this.onTap,
     this.onDirections,
+    this.onCall,
+    this.onOpenWebsite,
+    this.footer,
   });
 
   final String name;
-  final String address;
-  final String provider;
-  final List<String> categories;
+  final String? address;
+
   final double? rating;
   final int? ratingCount;
-  final int? priceLevel;
-  final String? distance;
+  final List<String> categories;
 
-  // Lazy-loaded details
+  final String? provider; // e.g. GOOGLE, YELP
+  final int? priceLevel;  // 0..4 -> "£", "££", etc.
+  final String? distance; // e.g. "0.9 km away"
+
   final String? phone;
   final String? website;
+
   final bool? openingNow;
   final List<String>? openingHours;
 
   final bool isExpanded;
-
   final VoidCallback? onTap;
   final VoidCallback? onDirections;
 
+  /// New: explicit callbacks so inner buttons don't trigger parent tap.
+  final VoidCallback? onCall;
+  final VoidCallback? onOpenWebsite;
+
+  /// Extra content rendered at the bottom INSIDE the card (chips, actions, etc.)
+  final Widget? footer;
+
+  String _priceLabel(int? level) {
+    if (level == null || level <= 0) return '';
+    return '£' * level.clamp(1, 4);
+  }
+
+  Widget _chip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        color: Colors.black12,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final meta = <String>[];
-    if (rating != null) {
-      final cnt = ratingCount != null ? ' ($ratingCount)' : '';
-      meta.add('${rating!.toStringAsFixed(1)}★$cnt');
-    }
-    if (categories.isNotEmpty) meta.add(categories.take(3).join(' • '));
-    if (distance != null && distance!.isNotEmpty) meta.add(distance!);
+    final muted =
+        Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7) ??
+            Colors.black54;
 
-    return Card(
+    final price = _priceLabel(priceLevel);
+    final showMetaRow =
+        (provider != null && provider!.isNotEmpty) || price.isNotEmpty;
+
+    return Material(
       color: AppColors.surface,
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.l)),
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.s),
+      borderRadius: BorderRadius.circular(16),
+      elevation: 1.5,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.l),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.m),
-          child: Row(
+          padding: const EdgeInsets.all(AppSpacing.m),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36, height: 36,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.restaurants),
-                alignment: Alignment.center,
-                child: const Icon(Icons.restaurant, color: AppColors.white, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.l),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700)),
-                    if (meta.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(meta.join(' • '), style: AppTextStyles.caption),
-                    ],
-                    const SizedBox(height: AppSpacing.s),
-                    Row(
+              // Title row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Leading icon
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.restaurant,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.m),
+                  // Title + subtitle
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on_outlined, size: 18),
-                        const SizedBox(width: AppSpacing.s),
-                        Expanded(
-                          child: Text(address.isNotEmpty ? address : 'Address unavailable', style: AppTextStyles.body),
-                        ),
-                      ],
-                    ),
-
-                    // Expanded details
-                    if (isExpanded) ...[
-                      const SizedBox(height: AppSpacing.s),
-
-                      // Compact status chip (Open/Closed)
-                      if (openingNow != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                          child: Chip(
-                            avatar: Icon(
-                              openingNow! ? Icons.check_circle : Icons.cancel,
-                              size: 16,
-                              color: openingNow! ? Colors.green : Colors.redAccent,
-                            ),
-                            label: Text(openingNow! ? 'Open now' : 'Closed'),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: const VisualDensity(vertical: -4, horizontal: -4),
-                          ),
-                        ),
-
-                      // Primary actions: Call / Website / Directions
-                      Wrap(
-                        spacing: AppSpacing.s,
-                        runSpacing: AppSpacing.s,
-                        children: [
-                          if (phone != null && phone!.isNotEmpty)
-                            OutlinedButton.icon(
-                              style: _pillBtn(context),
-                              onPressed: () => launchUrl(Uri.parse('tel:$phone')),
-                              icon: const Icon(Icons.call, size: 16),
-                              label: Text(phone!, overflow: TextOverflow.ellipsis),
-                            ),
-                          if (website != null && website!.isNotEmpty)
-                            OutlinedButton.icon(
-                              style: _pillBtn(context),
-                              onPressed: () => launchUrl(Uri.parse(website!), mode: LaunchMode.externalApplication),
-                              icon: const Icon(Icons.language, size: 16),
-                              label: const Text('Website'),
-                            ),
-                          if (onDirections != null)
-                            OutlinedButton.icon(
-                              style: _pillBtn(context),
-                              onPressed: onDirections,
-                              icon: const Icon(Icons.directions, size: 16),
-                              label: const Text('Directions'),
-                            ),
-                        ],
-                      ),
-
-                      if (openingHours != null && openingHours!.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.xs),
                         Text(
-                          _todayHoursLine(openingHours!),
-                          style: AppTextStyles.caption,
+                          name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-
-                    const SizedBox(height: AppSpacing.s),
-                    Wrap(
-                      spacing: AppSpacing.s,
-                      runSpacing: -AppSpacing.s,
-                      children: [
-                        Chip(
-                          label: Text(provider.toUpperCase()),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: const VisualDensity(vertical: -4, horizontal: -4),
-                        ),
-                        if (priceLevel != null)
-                          Chip(
-                            label: Text('£' * priceLevel!.clamp(1, 4)),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: const VisualDensity(vertical: -4, horizontal: -4),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                           ),
+                        ),
+                        if (address != null && address!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              address!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: muted,
+                              ),
+                            ),
+                          ),
+                        // Rating / categories / distance
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 10,
+                            runSpacing: 4,
+                            children: [
+                              if (rating != null)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, size: 14, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      rating!.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (ratingCount != null) ...[
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '(${ratingCount!})',
+                                        style: TextStyle(fontSize: 12, color: muted),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              if (categories.isNotEmpty)
+                                Text(
+                                  categories.join(' · '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 12, color: muted),
+                                ),
+                              if (distance != null)
+                                Text(
+                                  distance!,
+                                  style: TextStyle(fontSize: 12, color: muted),
+                                ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
+                  ),
+                  // Expand chevron
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.s, top: 4),
+                    child: Icon(
+                      isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 20,
+                      color: muted,
+                    ),
+                  ),
+                ],
+              ),
+
+              if (showMetaRow) const SizedBox(height: AppSpacing.m),
+
+              // Provider / price chips
+              if (showMetaRow)
+                Wrap(
+                  children: [
+                    if (provider != null && provider!.isNotEmpty)
+                      _chip(provider!.toUpperCase()),
+                    if (price.isNotEmpty) _chip(price),
                   ],
                 ),
-              ),
-              // caret to hint expand/collapse
-              Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.s, top: 2),
-                child: Icon(isExpanded ? Icons.expand_less : Icons.expand_more, size: 20, color: Colors.black45),
+
+              // Expanded section
+              AnimatedCrossFade(
+                crossFadeState:
+                isExpanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                duration: const Duration(milliseconds: 160),
+                firstChild: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Opening info
+                    if (openingNow != null ||
+                        (openingHours != null && openingHours!.isNotEmpty))
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.m),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (openingNow != null)
+                              Text(
+                                openingNow! ? 'Open now' : 'Closed now',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: openingNow!
+                                      ? const Color(0xFF0A7F3F)
+                                      : muted,
+                                ),
+                              ),
+                            if (openingHours != null && openingHours!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  openingHours!.join('\n'),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 12, color: muted),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    // Phone / website quick actions (buttons)
+                    if ((phone != null && phone!.isNotEmpty) ||
+                        (website != null && website!.isNotEmpty))
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.m),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 6,
+                          children: [
+                            if (phone != null && phone!.isNotEmpty)
+                              TextButton.icon(
+                                onPressed: onCall,
+                                icon: const Icon(Icons.phone, size: 16),
+                                label: Text(
+                                  phone!,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            if (website != null && website!.isNotEmpty)
+                              TextButton.icon(
+                                onPressed: onOpenWebsite,
+                                icon: const Icon(Icons.link, size: 16),
+                                label: SizedBox(
+                                  width: 200,
+                                  child: Text(
+                                    website!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    // Directions button
+                    if (onDirections != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.m),
+                        child: OutlinedButton.icon(
+                          onPressed: onDirections,
+                          icon: const Icon(Icons.directions),
+                          label: const Text('Directions'),
+                        ),
+                      ),
+
+                    // Footer INSIDE the card (chips, actions, etc.)
+                    if (footer != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.m),
+                        child: footer!,
+                      ),
+                  ],
+                ),
+                secondChild: const SizedBox.shrink(),
               ),
             ],
           ),
