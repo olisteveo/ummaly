@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +19,20 @@ import 'package:ummaly/features/restaurant/widgets/search_header.dart';
 import 'package:ummaly/features/restaurant/widgets/restaurant_map.dart';
 import 'package:ummaly/features/restaurant/widgets/results_sheet.dart';
 import 'package:ummaly/shared/http/http_client_binding.dart';
+
+/// Background JSON parsing to keep the UI thread smooth.
+List<dynamic> _parseRestaurantsIsolate(String body) {
+  final decoded = jsonDecode(body);
+  if (decoded is List) return decoded;
+  if (decoded is Map) {
+    return (decoded['items'] ??
+        decoded['data'] ??
+        decoded['results'] ??
+        decoded['restaurants'] ??
+        []) as List<dynamic>;
+  }
+  return const [];
+}
 
 class RestaurantSearchScreen extends StatefulWidget {
   final dynamic service;
@@ -42,6 +57,13 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   // Persisted memory of my proposals (across sessions)
   static const String _prefsKeyProposed = 'halalProposedKeys';
+
+  // Persist last-used search inputs
+  static const String _prefsKeyLastQuery = 'resto_last_query';
+  static const String _prefsKeyLastNear = 'resto_last_near';
+  static const String _prefsKeyLastRadiusKm = 'resto_last_radius_km';
+  static const String _prefsKeyRadiusExpanded = 'resto_radius_expanded';
+
   final Map<String, bool> _alreadyProposedByMe = <String, bool>{};
   final Map<String, int> _localReportCounts = <String, int>{};
 
@@ -58,11 +80,22 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getStringList(_prefsKeyProposed) ?? const <String>[];
-      setState(() {
-        for (final k in saved) {
-          _alreadyProposedByMe[k] = true;
-        }
-      });
+      for (final k in saved) {
+        _alreadyProposedByMe[k] = true;
+      }
+
+      // restore last query/near/radius
+      final q = prefs.getString(_prefsKeyLastQuery);
+      final near = prefs.getString(_prefsKeyLastNear);
+      final radius = prefs.getDouble(_prefsKeyLastRadiusKm);
+      final exp = prefs.getBool(_prefsKeyRadiusExpanded);
+
+      if (q != null && q.isNotEmpty) _qCtrl.text = q;
+      if (near != null) _nearCtrl.text = near;
+      if (radius != null) _radiusKm = radius;
+      if (exp != null) _radiusExpanded = exp;
+
+      setStateSafe(() {});
     } catch (_) {}
   }
 
@@ -74,6 +107,16 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         saved.add(key);
         await prefs.setStringList(_prefsKeyProposed, saved);
       }
+    } catch (_) {}
+  }
+
+  Future<void> _persistSearchInputs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsKeyLastQuery, _qCtrl.text.trim());
+      await prefs.setString(_prefsKeyLastNear, _nearCtrl.text.trim());
+      await prefs.setDouble(_prefsKeyLastRadiusKm, _radiusKm);
+      await prefs.setBool(_prefsKeyRadiusExpanded, _radiusExpanded);
     } catch (_) {}
   }
 
@@ -113,12 +156,17 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // One GlobalKey per list item to ensureVisible() precisely.
   List<GlobalKey> _itemKeys = const [];
 
+  // ===== lifecycle =====
   @override
   void initState() {
     super.initState();
     _loadLocalProposals();
     _bootstrapLocationCenter();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSearchCard());
+    _sheetCtrl.addListener(_onSheetSizeChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureSearchCard();
+      _applyMapPadding(); // apply initial padding
+    });
   }
 
   @override
@@ -126,8 +174,23 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     _qCtrl.dispose();
     _nearCtrl.dispose();
     _radiusDebounce?.cancel();
+    _sheetCtrl.removeListener(_onSheetSizeChanged);
     _mapCtrl?.dispose();
     super.dispose();
+  }
+
+  // Safe setState
+  void setStateSafe(VoidCallback fn) {
+    if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      // queue after build frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
   }
 
   // ===== Units =====
@@ -319,9 +382,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       final isSelected = _expandedIndex == i;
       final hue = isSelected ? 140.0 : 275.0;
 
+      final key = _placeKey(e);
+      final id = key.isNotEmpty ? 'r_$key' : 'r_$i';
+
       markers.add(
         Marker(
-          markerId: MarkerId('r$i'),
+          markerId: MarkerId(id),
           icon: BitmapDescriptor.defaultMarkerWithHue(hue),
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
@@ -333,11 +399,27 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         ),
       );
     }
-    setState(() {
+    setStateSafe(() {
       _markers
         ..clear()
         ..addAll(markers);
+      _applyMapPadding();
     });
+  }
+
+  // ===== Map padding to avoid UI overlap =====
+  void _applyMapPadding() {
+    if (_mapCtrl == null) return;
+    final top = _mapTopUiPaddingPx;
+    // Estimate bottom padding from current sheet size
+    final h = MediaQuery.of(context).size.height;
+    final bottom = (_sheetCtrl.size * h) * 0.15; // a gentle bottom pad
+    _mapCtrl!.setPadding(0, top.toInt(), 0, bottom.toInt());
+  }
+
+  void _onSheetSizeChanged() {
+    // keep map content visible above the sheet while dragging
+    _applyMapPadding();
   }
 
   // ===== Distance + external maps =====
@@ -394,7 +476,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     if (!uri.hasScheme) {
       uri = Uri.parse('https://$url');
     }
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   // ===== Dialogs / toasts =====
@@ -442,8 +526,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     if (box is! RenderBox || !box.hasSize) return;
     final topLeft = box.localToGlobal(Offset.zero);
     final bottom = topLeft.dy + box.size.height;
-    setState(() {
+    setStateSafe(() {
       _searchCardBottomPx = bottom;
+      _applyMapPadding();
     });
   }
 
@@ -491,7 +576,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     final delta = -deltaPixels / h;
     final next = (current + delta).clamp(_sheetMin, _sheetMax);
     _sheetCtrl.jumpTo(next);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSearchCard());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureSearchCard();
+      _applyMapPadding();
+    });
   }
 
   // ===== Search =====
@@ -499,7 +587,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     if (_loading) return;
     FocusScope.of(context).unfocus();
 
-    setState(() {
+    setStateSafe(() {
       _loading = true;
       _error = null;
       _items = [];
@@ -515,6 +603,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     try {
       final q = _qCtrl.text.trim();
       final near = _nearCtrl.text.trim();
+
+      // persist inputs
+      _persistSearchInputs();
 
       Position? pos;
       if (near.isEmpty) {
@@ -553,19 +644,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         throw Exception('Restaurant search failed (${resp.statusCode})');
       }
 
-      final decoded = jsonDecode(resp.body);
-      List<dynamic> items;
-      if (decoded is List) {
-        items = decoded;
-      } else if (decoded is Map) {
-        items = (decoded['items'] ??
-            decoded['data'] ??
-            decoded['results'] ??
-            decoded['restaurants'] ??
-            []) as List<dynamic>;
-      } else {
-        items = const [];
-      }
+      // Parse in background isolate
+      final items = await compute(_parseRestaurantsIsolate, resp.body);
 
       if (myTurn != _requestSerial) return;
 
@@ -590,7 +670,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         }
       }
 
-      setState(() => _items = items);
+      setStateSafe(() => _items = items);
       _rebuildMarkersFromItems();
 
       if (_markers.isNotEmpty) {
@@ -605,23 +685,26 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       await _fitMapToPinsRespectingRadius();
     } catch (e) {
       if (myTurn != _requestSerial) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setStateSafe(
+              () => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (!mounted || myTurn != _requestSerial) return;
-      setState(() => _loading = false);
+      setStateSafe(() => _loading = false);
     }
   }
 
   // ===== Selection handlers =====
   Future<void> _onMarkerTap(int index) async {
     if (_expandedIndex == index) {
-      setState(() => _expandedIndex = -1);
+      setStateSafe(() => _expandedIndex = -1);
       _selectedMarkerId = null;
     } else {
-      setState(() => _expandedIndex = index);
+      setStateSafe(() => _expandedIndex = index);
       _selectedMarkerId = 'r$index';
     }
     _rebuildMarkersFromItems();
+
+    HapticFeedback.selectionClick();
 
     await _centerOnItemWithOffset(_items[index] as Map);
 
@@ -632,13 +715,15 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   Future<void> _onCardTap(int index, Map m) async {
     if (_expandedIndex == index) {
-      setState(() => _expandedIndex = -1);
+      setStateSafe(() => _expandedIndex = -1);
       _selectedMarkerId = null;
     } else {
-      setState(() => _expandedIndex = index);
+      setStateSafe(() => _expandedIndex = index);
       _selectedMarkerId = 'r$index';
     }
     _rebuildMarkersFromItems();
+
+    HapticFeedback.selectionClick();
 
     await _centerOnItemWithOffset(m);
 
@@ -650,7 +735,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   // Smoothly scroll the results list to a given index using GlobalKey.
   void _scrollToIndex(int index) {
     try {
-      final key = (index >= 0 && index < _itemKeys.length) ? _itemKeys[index] : null;
+      final key =
+      (index >= 0 && index < _itemKeys.length) ? _itemKeys[index] : null;
       final ctx = key?.currentContext;
       if (ctx != null) {
         Scrollable.ensureVisible(
@@ -703,7 +789,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       return;
     }
 
-    setState(() => _submittingIdx.add(index));
+    setStateSafe(() => _submittingIdx.add(index));
 
     try {
       final body = jsonEncode({
@@ -730,7 +816,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           _alreadyProposedByMe[key] = true;
           _saveLocalProposalKey(key);
         }
-        setState(() {
+        setStateSafe(() {
           m['alreadyProposedByMe'] = true;
         });
         _toast('You already submitted a report for this place.');
@@ -751,7 +837,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         _saveLocalProposalKey(key);
       }
 
-      setState(() {
+      setStateSafe(() {
         m['communityHalalCount'] = next;
         m['alreadyProposedByMe'] = true;
       });
@@ -760,7 +846,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     } catch (e) {
       _toast('Failed to submit: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
-      if (mounted) setState(() => _submittingIdx.remove(index));
+      if (mounted) setStateSafe(() => _submittingIdx.remove(index));
     }
   }
 
@@ -819,6 +905,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               onMapCreated: (c) async {
                 _mapCtrl = c;
                 await UmmalyMapStyles.apply(c, context);
+                _applyMapPadding();
                 await _bootstrapLocationCenter();
                 await _fitMapToPinsRespectingRadius();
               },
@@ -857,50 +944,66 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 radiusExpanded: _radiusExpanded,
                 useMiles: _useMiles,
                 radiusLabel: _radiusLabel(),
-                onMeasureRequested: _measureSearchCard,
+                onMeasureRequested: () {
+                  _measureSearchCard();
+                  _applyMapPadding();
+                },
                 onCollapseSheet: _collapseSheet,
 
                 // Flipped behavior: when radius EXPANDS, drop results; when it collapses, do nothing.
                 onToggleRadius: () {
-                  setState(() => _radiusExpanded = !_radiusExpanded);
+                  setStateSafe(() => _radiusExpanded = !_radiusExpanded);
                   WidgetsBinding.instance
-                      .addPostFrameCallback((_) => _measureSearchCard());
+                      .addPostFrameCallback((_) {
+                    _measureSearchCard();
+                    _applyMapPadding();
+                  });
                   if (_radiusExpanded) {
                     _collapseSheet();
                   }
+                  _persistSearchInputs();
                 },
 
                 onSearchPressed: () {
                   if (_radiusExpanded) {
-                    setState(() => _radiusExpanded = false);
+                    setStateSafe(() => _radiusExpanded = false);
                     WidgetsBinding.instance
-                        .addPostFrameCallback((_) => _measureSearchCard());
+                        .addPostFrameCallback((_) {
+                      _measureSearchCard();
+                      _applyMapPadding();
+                    });
                   }
                   _search();
                   _snapSheetUnderSearch();
                 },
                 onSubmit: () {
                   if (_radiusExpanded) {
-                    setState(() => _radiusExpanded = false);
+                    setStateSafe(() => _radiusExpanded = false);
                     WidgetsBinding.instance
-                        .addPostFrameCallback((_) => _measureSearchCard());
+                        .addPostFrameCallback((_) {
+                      _measureSearchCard();
+                      _applyMapPadding();
+                    });
                   }
                   _search();
                   _snapSheetUnderSearch();
                 },
                 onPresetTap: (double valueInUnits) {
                   final km = _useMiles ? (valueInUnits / _kmToMi) : valueInUnits;
-                  setState(() => _radiusKm = km);
+                  setStateSafe(() => _radiusKm = km);
+                  _persistSearchInputs();
                   _search();
                 },
                 onRadiusChanged: (double v) {
-                  setState(() => _radiusKm = v);
+                  setStateSafe(() => _radiusKm = v);
+                  _persistSearchInputs();
                   _radiusDebounce?.cancel();
                   _radiusDebounce =
                       Timer(const Duration(milliseconds: 250), _search);
                 },
                 onRadiusChangeEnd: (_) {
                   _radiusDebounce?.cancel();
+                  _persistSearchInputs();
                   _search();
                 },
               ),
@@ -941,8 +1044,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                   final address = m['address']?.toString() ?? '';
                   final lat = _asDouble(m['latitude']);
                   final lng = _asDouble(m['longitude']);
-                  final dist =
-                  (lat != null && lng != null) ? _distanceLabel(lat, lng) : null;
+                  final dist = (lat != null && lng != null)
+                      ? _distanceLabel(lat, lng)
+                      : null;
 
                   final halalVerified = _isTrue(m['halalVerified']);
                   final claimedHalal = _isTrue(m['claimedHalal']);
