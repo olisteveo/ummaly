@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,6 +67,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   final Map<String, bool> _alreadyProposedByMe = <String, bool>{};
   final Map<String, int> _localReportCounts = <String, int>{};
+
+  // --- Map + sheet tuning ---
+  // Approx height for one expanded card + sheet header/padding (px).
+  // Tweak if your card’s layout changes.
+  static const double _oneCardSheetApproxPx = 260.0;
 
   String _placeKey(Map m) {
     final ext = m['externalId']?.toString();
@@ -165,7 +171,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     _sheetCtrl.addListener(_onSheetSizeChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _measureSearchCard();
-      _applyMapPadding(); // apply initial padding
+      _applyMapPadding(); // safe no-op
     });
   }
 
@@ -184,7 +190,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     if (!mounted) return;
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
-      // queue after build frame
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(fn);
       });
@@ -340,8 +345,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
-  // Improved centering with generous vertical offset so pin isn’t under header/sheet.
-  Future<void> _centerOnItemWithOffset(Map e, {double? yOffsetPx}) async {
+  /// Move to the item and keep it centered (no pixel scroll).
+  /// We then collapse the sheet so the pin is clearly visible.
+  Future<void> _focusMapOnItem(Map e, {double minZoom = 16}) async {
     final lat = _asDouble(e['latitude']);
     final lng = _asDouble(e['longitude']);
     if (_mapCtrl == null || lat == null || lng == null) return;
@@ -349,20 +355,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     final currentZoom = await _mapCtrl!.getZoomLevel();
     final target = LatLng(lat, lng);
 
-    final headerPad = _mapTopUiPaddingPx;
-    final sheetBias = 92.0; // approx. header + handle space of sheet
-    final totalYOffset = (yOffsetPx ?? (headerPad + sheetBias));
-
-    final sc = await _mapCtrl!.getScreenCoordinate(target);
-    final adjusted = ScreenCoordinate(
-      x: sc.x,
-      y: (sc.y - totalYOffset).toInt(),
-    );
-    final newLatLng = await _mapCtrl!.getLatLng(adjusted);
-
     await _mapCtrl!.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: newLatLng, zoom: math.max(currentZoom, 14)),
+        CameraPosition(target: target, zoom: math.max(currentZoom, minZoom)),
       ),
     );
   }
@@ -408,17 +403,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ===== Map padding to avoid UI overlap =====
-  void _applyMapPadding() {
+  // Safe no-op: we keep centered focus and collapse the sheet instead.
+  Future<void> _applyMapPadding() async {
     if (_mapCtrl == null) return;
-    final top = _mapTopUiPaddingPx;
-    // Estimate bottom padding from current sheet size
-    final h = MediaQuery.of(context).size.height;
-    final bottom = (_sheetCtrl.size * h) * 0.15; // a gentle bottom pad
-    _mapCtrl!.setPadding(0, top.toInt(), 0, bottom.toInt());
   }
 
   void _onSheetSizeChanged() {
-    // keep map content visible above the sheet while dragging
     _applyMapPadding();
   }
 
@@ -450,7 +440,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   Future<void> _openInMaps(double lat, double lng, String name) async {
     final query = Uri.encodeComponent(name);
     final geo = Uri.parse('geo:$lat,$lng?q=$lat,$lng($query)'); // Android
-    final apple = Uri.parse('http://maps.apple.com/?q=$query&ll=$lat,$lng'); // iOS
+    final apple =
+    Uri.parse('http://maps.apple.com/?q=$query&ll=$lat,$lng'); // iOS
     if (await canLaunchUrl(geo)) {
       await launchUrl(geo);
     } else {
@@ -498,7 +489,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             maxLines: 3,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
                 val = ctrl.text.trim();
@@ -539,12 +532,27 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     return desired.clamp(_sheetMin, _sheetMax);
   }
 
+  double _sizeForSheetHeightPx(double sheetPx) {
+    final h = MediaQuery.of(context).size.height;
+    if (h <= 0) return _sheetInit;
+    return (sheetPx / h).clamp(_sheetMin, _sheetMax);
+  }
+
   void _snapSheetUnderSearch() {
     final target = _sizeForTopGapPx(_searchCardBottomPx + 8);
     _sheetCtrl.animateTo(
       target,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
+    );
+  }
+
+  void _collapseSheetToOneCard() {
+    final target = _sizeForSheetHeightPx(_oneCardSheetApproxPx);
+    _sheetCtrl.animateTo(
+      target,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -633,8 +641,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         if (pos != null) 'lng': pos.longitude.toString(),
       };
 
-      final uri =
-      Uri.parse(Config.restaurantsSearchEndpoint).replace(queryParameters: qp);
+      final uri = Uri.parse(Config.restaurantsSearchEndpoint)
+          .replace(queryParameters: qp);
 
       if (kDebugMode) debugPrint('[Search] GET $uri');
 
@@ -706,11 +714,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
     HapticFeedback.selectionClick();
 
-    await _centerOnItemWithOffset(_items[index] as Map);
-
+    await _focusMapOnItem(_items[index] as Map);
     _scrollToIndex(index);
 
-    _expandSheetToContent();
+    // Collapse to one-card view
+    _collapseSheetToOneCard();
   }
 
   Future<void> _onCardTap(int index, Map m) async {
@@ -725,11 +733,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
     HapticFeedback.selectionClick();
 
-    await _centerOnItemWithOffset(m);
-
+    await _focusMapOnItem(m);
     _scrollToIndex(index);
 
-    _expandSheetToContent();
+    // Collapse to one-card view
+    _collapseSheetToOneCard();
   }
 
   // Smoothly scroll the results list to a given index using GlobalKey.
@@ -741,7 +749,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       if (ctx != null) {
         Scrollable.ensureVisible(
           ctx,
-          alignment: 0.08,
+          alignment: 0.02, // keep the selected card near the top of the sheet
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         );
@@ -905,7 +913,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
               onMapCreated: (c) async {
                 _mapCtrl = c;
                 await UmmalyMapStyles.apply(c, context);
-                _applyMapPadding();
+                _applyMapPadding(); // safe no-op
                 await _bootstrapLocationCenter();
                 await _fitMapToPinsRespectingRadius();
               },
@@ -950,11 +958,10 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 },
                 onCollapseSheet: _collapseSheet,
 
-                // Flipped behavior: when radius EXPANDS, drop results; when it collapses, do nothing.
+                // When radius expands, drop results; when it collapses, do nothing.
                 onToggleRadius: () {
                   setStateSafe(() => _radiusExpanded = !_radiusExpanded);
-                  WidgetsBinding.instance
-                      .addPostFrameCallback((_) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
                     _measureSearchCard();
                     _applyMapPadding();
                   });
@@ -967,8 +974,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 onSearchPressed: () {
                   if (_radiusExpanded) {
                     setStateSafe(() => _radiusExpanded = false);
-                    WidgetsBinding.instance
-                        .addPostFrameCallback((_) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
                       _measureSearchCard();
                       _applyMapPadding();
                     });
@@ -979,8 +985,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                 onSubmit: () {
                   if (_radiusExpanded) {
                     setStateSafe(() => _radiusExpanded = false);
-                    WidgetsBinding.instance
-                        .addPostFrameCallback((_) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
                       _measureSearchCard();
                       _applyMapPadding();
                     });

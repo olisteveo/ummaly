@@ -10,6 +10,11 @@ class RestaurantMap extends StatelessWidget {
   final VoidCallback onRecenter;
   final double recenterTop;
 
+  /// Must be EdgeInsets (GoogleMap.padding requires this concrete type).
+  final EdgeInsets padding;
+
+  final MapType mapType;
+
   const RestaurantMap({
     super.key,
     required this.initialCamera,
@@ -18,6 +23,8 @@ class RestaurantMap extends StatelessWidget {
     this.myLocationEnabled = true,
     required this.onRecenter,
     this.recenterTop = 140,
+    this.padding = EdgeInsets.zero,
+    this.mapType = MapType.normal,
   });
 
   @override
@@ -34,6 +41,11 @@ class RestaurantMap extends StatelessWidget {
             tiltGesturesEnabled: false,
             rotateGesturesEnabled: true,
             zoomGesturesEnabled: true,
+            mapType: mapType,
+
+            // <- important
+            padding: padding,
+
             onMapCreated: onMapCreated,
           ),
         ),
