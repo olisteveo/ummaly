@@ -69,8 +69,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   final Map<String, int> _localReportCounts = <String, int>{};
 
   // --- Map + sheet tuning ---
-  // Approx height for one expanded card + sheet header/padding (px).
-  // Tweak if your card’s layout changes.
   static const double _oneCardSheetApproxPx = 260.0;
 
   String _placeKey(Map m) {
@@ -345,8 +343,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     }
   }
 
-  /// Move to the item and keep it centered (no pixel scroll).
-  /// We then collapse the sheet so the pin is clearly visible.
+  /// Prefer a backend-provided Google Maps URL if present; else fall back to geo:lat,lng.
+  Future<void> _openMapsUrlOrLatLng(Map m, double? lat, double? lng, String name) async {
+    final rawUrl = m['googleMapsUrl']?.toString();
+    if (rawUrl != null && rawUrl.isNotEmpty) {
+      try {
+        final uri = Uri.parse(rawUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {
+        // fall through to lat/lng
+      }
+    }
+    if (lat != null && lng != null) {
+      await _openInMaps(lat, lng, name);
+    }
+  }
+
   Future<void> _focusMapOnItem(Map e, {double minZoom = 16}) async {
     final lat = _asDouble(e['latitude']);
     final lng = _asDouble(e['longitude']);
@@ -388,7 +403,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
           infoWindow: InfoWindow(
             title: name,
             snippet: address,
-            onTap: () => _openInMaps(lat, lng, name),
+            onTap: () => _openMapsUrlOrLatLng(e, lat, lng, name),
           ),
           onTap: () => _onMarkerTap(i),
         ),
@@ -403,7 +418,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ===== Map padding to avoid UI overlap =====
-  // Safe no-op: we keep centered focus and collapse the sheet instead.
   Future<void> _applyMapPadding() async {
     if (_mapCtrl == null) return;
   }
@@ -767,7 +781,14 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   bool _canPropose(Map m) {
     final provider = (m['provider']?.toString() ?? '').toLowerCase();
     final hasGoogleId = (m['externalId']?.toString().isNotEmpty ?? false);
-    final isVerified = _isTrue(m['halalVerified']);
+
+    // Treat any of these as verified: explicit bools OR status values.
+    final status = m['halalStatusEffective']?.toString().toUpperCase();
+    final isVerified = (m['isVerifiedHalal'] == true) ||
+        (m['halalVerified'] == true) ||
+        status == 'CERTIFIED' ||
+        status == 'ADMIN_VERIFIED';
+
     final already = m['alreadyProposedByMe'] == true;
     return provider == 'google' && hasGoogleId && !isVerified && !already;
   }
@@ -1053,8 +1074,17 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       ? _distanceLabel(lat, lng)
                       : null;
 
-                  final halalVerified = _isTrue(m['halalVerified']);
-                  final claimedHalal = _isTrue(m['claimedHalal']);
+                  // New halal field handling (backward-compatible):
+                  final status =
+                  m['halalStatusEffective']?.toString().toUpperCase();
+                  final halalVerified = (m['isVerifiedHalal'] == true) ||
+                      (m['halalVerified'] == true) ||
+                      status == 'CERTIFIED' ||
+                      status == 'ADMIN_VERIFIED';
+                  final isNotHalal = status == 'NOT_HALAL';
+                  final claimedHalal =
+                      (m['claimedHalal'] == true) || status == 'CLAIMED_HALAL';
+
                   final communityCount = _asInt(m['communityHalalCount']);
                   final canMark = _canPropose(m);
                   final alreadyByMe = m['alreadyProposedByMe'] == true;
@@ -1063,6 +1093,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
                   final phone = m['phone']?.toString();
                   final website = m['website']?.toString();
+                  final mapsUrl = m['googleMapsUrl']?.toString();
+                  final hasDirections =
+                      (lat != null && lng != null) || (mapsUrl != null && mapsUrl.isNotEmpty);
 
                   return Container(
                     key: (i < _itemKeys.length) ? _itemKeys[i] : null,
@@ -1090,8 +1123,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           .toList(),
                       isExpanded: isExpanded,
                       onTap: () => _onCardTap(i, m),
-                      onDirections: (lat != null && lng != null)
-                          ? () => _openInMaps(lat, lng, name)
+                      onDirections: hasDirections
+                          ? () => _openMapsUrlOrLatLng(m, lat, lng, name)
                           : null,
                       onCall: (phone != null && phone.isNotEmpty)
                           ? () => _callPhone(phone)
@@ -1108,12 +1141,20 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                         children: [
                           if (halalVerified)
                             _chip(
-                              'Halal Verified',
+                              'Halal (Verified)',
                               bg: const Color(0xFFE6F5EC),
                               fg: const Color(0xFF0A7F3F),
                               icon: Icons.verified,
                             ),
+                          if (!halalVerified && isNotHalal)
+                            _chip(
+                              'Not Halal',
+                              bg: const Color(0xFFFFEBEE),
+                              fg: const Color(0xFFC62828),
+                              icon: Icons.block,
+                            ),
                           if (!halalVerified &&
+                              !isNotHalal &&
                               (claimedHalal || communityCount > 0))
                             _chip(
                               communityCount > 0
