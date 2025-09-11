@@ -29,19 +29,18 @@ Ummaly addresses the lack of a reliable, unified source for halal verification. 
 
 ## Tech Stack
 
-| Layer                  | Stack                                                           |
-|------------------------|-----------------------------------------------------------------|
-| **Frontend**           | Flutter (Dart) – built for Android & iOS                       |
-| **Backend**            | Node.js (Express)                                              |
-| **Database**           | PostgreSQL (Neon) with Prisma ORM                              |
-| **Authentication**     | Firebase Authentication (email/password, password reset, email verification) |
-| **Payments**           | Stripe API (planned)                                           |
-| **Cloud Functions**    | Firebase Admin SDK (token verification, future server tasks)   |
-| **APIs & Integrations**| Open Food Facts API (product data), future halal certification APIs |
-| **Developer Tools**    | Android Studio (Flutter frontend), VS Code (Node.js backend), GitHub (version control) |
-| **Hosting/Infra**      | Local dev server for backend (moving to cloud later)           |
-
-
+| Layer                  | Stack                                                                                                             |
+|------------------------|-------------------------------------------------------------------------------------------------------------------|
+| **Frontend (Mobile)**  | Flutter (Dart) – built for Android & iOS                                                                          |
+| **Admin Dashboard**    | Next.js 14 (App Router) + React + TypeScript, React-Admin + MUI theme, Firebase Admin SDK (token verify/admin claims), PostgreSQL via `pg`, Next.js API Routes for approve/reject workflows |
+| **Backend API**        | Node.js (Express)                                                                                                 |
+| **Database**           | PostgreSQL (Neon) with Prisma ORM                                                                                 |
+| **Authentication**     | Firebase Authentication (email/password, password reset, email verification)                                      |
+| **Payments**           | Stripe API (planned)                                                                                              |
+| **Cloud / Admin SDK**  | Firebase Admin SDK (token verification, scripts for admin claims)                                                 |
+| **APIs & Integrations**| Google Places (restaurant lookup), Open Food Facts (product data), future halal certification APIs                |
+| **Developer Tools**    | Android Studio (Flutter), VS Code (Node/Next), GitHub (version control)                                          |
+| **Hosting/Infra**      | Local dev for now (moving to cloud); Neon for Postgres
 ---
 
 ## Project Structure (Flutter)
