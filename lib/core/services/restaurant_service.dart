@@ -71,4 +71,40 @@ class RestaurantService {
       providersUsed: providersUsed,
     );
   }
+
+  /// Optional helper if you want to post proposals from a service instead of a screen.
+  Future<void> submitHalalProposal({
+    required String provider, // 'google'
+    required String externalId, // google place_id
+    String? evidenceText,
+    List<String>? evidenceUrls,
+    String intent = 'CERTIFY', // 'CERTIFY' | 'DISPUTE'
+    String? authToken,
+  }) async {
+    final rs = Uri.parse(Config.restaurantsSearchEndpoint);
+    final uri = Uri(
+      scheme: rs.scheme,
+      host: rs.host,
+      port: rs.hasPort ? rs.port : null,
+      path: '/api/halal/proposals',
+    );
+
+    final body = <String, dynamic>{
+      'provider': provider,
+      'externalId': externalId,
+      if (evidenceText != null) 'evidenceText': evidenceText,
+      if (evidenceUrls != null) 'evidenceUrls': evidenceUrls,
+      'intent': intent,
+    };
+
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      if (authToken != null) 'Authorization': 'Bearer $authToken',
+    };
+
+    final res = await http.post(uri, headers: headers, body: jsonEncode(body));
+    if (res.statusCode >= 400) {
+      throw Exception('Proposal failed: ${res.statusCode} ${res.body}');
+    }
+  }
 }

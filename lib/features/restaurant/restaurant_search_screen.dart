@@ -53,11 +53,15 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   String? _error;
   List<dynamic> _items = [];
 
-  // Track per-item submit spinners for "Mark as halal"
+  // Track per-item submit spinners for submit buttons
   final Set<int> _submittingIdx = <int>{};
 
   // Persisted memory of my proposals (across sessions)
-  static const String _prefsKeyProposed = 'halalProposedKeys';
+  // Legacy (kept): CERTIFY reports you submitted
+  static const String _prefsKeyProposedLegacy = 'halalProposedKeys';
+  // New: split memory -> certify vs dispute
+  static const String _prefsKeyProposedCert = 'halalProposedKeysCert';
+  static const String _prefsKeyProposedDispute = 'halalProposedKeysDispute';
 
   // Persist last-used search inputs
   static const String _prefsKeyLastQuery = 'resto_last_query';
@@ -65,7 +69,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   static const String _prefsKeyLastRadiusKm = 'resto_last_radius_km';
   static const String _prefsKeyRadiusExpanded = 'resto_radius_expanded';
 
-  final Map<String, bool> _alreadyProposedByMe = <String, bool>{};
+  // Local memory maps
+  final Map<String, bool> _alreadyProposedCertByMe = <String, bool>{};
+  final Map<String, bool> _alreadyDisputedByMe = <String, bool>{};
+
+  // Optional local display tweak for community count
   final Map<String, int> _localReportCounts = <String, int>{};
 
   // --- Map + sheet tuning ---
@@ -83,9 +91,22 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   Future<void> _loadLocalProposals() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getStringList(_prefsKeyProposed) ?? const <String>[];
-      for (final k in saved) {
-        _alreadyProposedByMe[k] = true;
+
+      // Upgrade legacy -> CERTIFY
+      final legacy = prefs.getStringList(_prefsKeyProposedLegacy) ?? const <String>[];
+      for (final k in legacy) {
+        _alreadyProposedCertByMe[k] = true;
+      }
+
+      // New buckets
+      final cert = prefs.getStringList(_prefsKeyProposedCert) ?? const <String>[];
+      final dispute = prefs.getStringList(_prefsKeyProposedDispute) ?? const <String>[];
+
+      for (final k in cert) {
+        _alreadyProposedCertByMe[k] = true;
+      }
+      for (final k in dispute) {
+        _alreadyDisputedByMe[k] = true;
       }
 
       // restore last query/near/radius
@@ -103,14 +124,19 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     } catch (_) {}
   }
 
-  Future<void> _saveLocalProposalKey(String key) async {
+  Future<void> _saveLocalProposalKey(String key, String intent) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getStringList(_prefsKeyProposed) ?? <String>[];
-      if (!saved.contains(key)) {
-        saved.add(key);
-        await prefs.setStringList(_prefsKeyProposed, saved);
+      final listName =
+      (intent.toUpperCase() == 'DISPUTE') ? _prefsKeyProposedDispute : _prefsKeyProposedCert;
+
+      final list = prefs.getStringList(listName) ?? <String>[];
+      if (!list.contains(key)) {
+        list.add(key);
+        await prefs.setStringList(listName, list);
       }
+
+      // Do not write to legacy again; we only read it for upgrade.
     } catch (_) {}
   }
 
@@ -679,8 +705,12 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         final k = _placeKey(e);
         if (k.isEmpty) continue;
 
-        if (_alreadyProposedByMe[k] == true) {
-          e['alreadyProposedByMe'] = true;
+        // annotate with my local actions
+        if (_alreadyProposedCertByMe[k] == true) {
+          e['alreadyProposedByMe'] = true; // legacy flag for CERTIFY
+        }
+        if (_alreadyDisputedByMe[k] == true) {
+          e['alreadyDisputedByMe'] = true;
         }
 
         final localCnt = _localReportCounts[k];
@@ -778,28 +808,44 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   // ===== Proposal submit =====
-  bool _canPropose(Map m) {
-    final provider = (m['provider']?.toString() ?? '').toLowerCase();
-    final hasGoogleId = (m['externalId']?.toString().isNotEmpty ?? false);
-
-    // Treat any of these as verified: explicit bools OR status values.
+  bool _isVerified(Map m) {
     final status = m['halalStatusEffective']?.toString().toUpperCase();
-    final isVerified = (m['isVerifiedHalal'] == true) ||
+    return (m['isVerifiedHalal'] == true) ||
         (m['halalVerified'] == true) ||
         status == 'CERTIFIED' ||
         status == 'ADMIN_VERIFIED';
-
-    final already = m['alreadyProposedByMe'] == true;
-    return provider == 'google' && hasGoogleId && !isVerified && !already;
   }
 
-  Future<void> _submitProposal(int index, Map m) async {
+  bool _canCertify(Map m) {
+    final provider = (m['provider']?.toString() ?? '').toLowerCase();
+    final hasGoogleId = (m['externalId']?.toString().isNotEmpty ?? false);
+    final alreadyCert = m['alreadyProposedByMe'] == true;
+    return provider == 'google' && hasGoogleId && !_isVerified(m) && !alreadyCert;
+  }
+
+  bool _canDispute(Map m) {
+    final provider = (m['provider']?.toString() ?? '').toLowerCase();
+    final hasGoogleId = (m['externalId']?.toString().isNotEmpty ?? false);
+    final alreadyDispute = m['alreadyDisputedByMe'] == true;
+    return provider == 'google' && hasGoogleId && _isVerified(m) && !alreadyDispute;
+  }
+
+  Future<void> _submitProposal(int index, Map m, {required String intent}) async {
     if (_submittingIdx.contains(index)) return;
 
     final key = _placeKey(m);
-    if (key.isNotEmpty && _alreadyProposedByMe[key] == true) {
-      _toast('You already submitted a report for this place.');
-      return;
+
+    // Block double-submit based on the specific intent
+    if (intent.toUpperCase() == 'DISPUTE') {
+      if (key.isNotEmpty && _alreadyDisputedByMe[key] == true) {
+        _toast('You already disputed this verification.');
+        return;
+      }
+    } else {
+      if (key.isNotEmpty && _alreadyProposedCertByMe[key] == true) {
+        _toast('You already submitted a report for this place.');
+        return;
+      }
     }
 
     final evidence = await _promptEvidence();
@@ -822,9 +868,14 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
     try {
       final body = jsonEncode({
-        'googlePlaceId': googlePlaceId,
+        // Preferred modern payload the backend accepts
+        'provider': 'google',
+        'externalId': googlePlaceId,
         'evidenceText': evidence,
         'evidenceUrls': <String>[],
+        'intent': intent, // <<<<<<<< IMPORTANT
+        // Legacy fields still included harmlessly
+        'googlePlaceId': googlePlaceId,
         'name': m['name']?.toString() ?? '',
         'lat': lat,
         'lng': lng,
@@ -841,14 +892,20 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       );
 
       if (resp.statusCode == 409) {
+        // already submitted (for that intent) — set local flags
         if (key.isNotEmpty) {
-          _alreadyProposedByMe[key] = true;
-          _saveLocalProposalKey(key);
+          await _saveLocalProposalKey(key, intent);
+          if (intent.toUpperCase() == 'DISPUTE') {
+            _alreadyDisputedByMe[key] = true;
+            setStateSafe(() => m['alreadyDisputedByMe'] = true);
+          } else {
+            _alreadyProposedCertByMe[key] = true;
+            setStateSafe(() => m['alreadyProposedByMe'] = true);
+          }
         }
-        setStateSafe(() {
-          m['alreadyProposedByMe'] = true;
-        });
-        _toast('You already submitted a report for this place.');
+        _toast(intent.toUpperCase() == 'DISPUTE'
+            ? 'You already disputed this place.'
+            : 'You already submitted a report for this place.');
         return;
       }
 
@@ -856,22 +913,27 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         throw Exception('Server responded ${resp.statusCode}');
       }
 
-      // Optimistic bump + mark submitted + persist
-      final current = _asInt(m['communityHalalCount']);
-      final next = current + 1;
-
+      // Optimistic local state
       if (key.isNotEmpty) {
-        _alreadyProposedByMe[key] = true;
-        _localReportCounts[key] = next;
-        _saveLocalProposalKey(key);
+        await _saveLocalProposalKey(key, intent);
+        if (intent.toUpperCase() == 'DISPUTE') {
+          _alreadyDisputedByMe[key] = true;
+          setStateSafe(() => m['alreadyDisputedByMe'] = true);
+        } else {
+          _alreadyProposedCertByMe[key] = true;
+          setStateSafe(() => m['alreadyProposedByMe'] = true);
+
+          // bump the community count for certify flows only
+          final current = _asInt(m['communityHalalCount']);
+          final next = current + 1;
+          _localReportCounts[key] = next;
+          m['communityHalalCount'] = next;
+        }
       }
 
-      setStateSafe(() {
-        m['communityHalalCount'] = next;
-        m['alreadyProposedByMe'] = true;
-      });
-
-      _toast('Thanks! We’ll review shortly.');
+      _toast(intent.toUpperCase() == 'DISPUTE'
+          ? 'Thanks — dispute submitted'
+          : 'Thanks! We’ll review shortly.');
     } catch (e) {
       _toast('Failed to submit: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
@@ -1075,19 +1137,24 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                       : null;
 
                   // New halal field handling (backward-compatible):
+                  final halalVerified = _isVerified(m);
                   final status =
                   m['halalStatusEffective']?.toString().toUpperCase();
-                  final halalVerified = (m['isVerifiedHalal'] == true) ||
-                      (m['halalVerified'] == true) ||
-                      status == 'CERTIFIED' ||
-                      status == 'ADMIN_VERIFIED';
                   final isNotHalal = status == 'NOT_HALAL';
                   final claimedHalal =
                       (m['claimedHalal'] == true) || status == 'CLAIMED_HALAL';
 
                   final communityCount = _asInt(m['communityHalalCount']);
-                  final canMark = _canPropose(m);
-                  final alreadyByMe = m['alreadyProposedByMe'] == true;
+
+                  // Intent-specific "already by me" flags
+                  final k = _placeKey(m);
+                  final alreadyCert =
+                      m['alreadyProposedByMe'] == true || _alreadyProposedCertByMe[k] == true;
+                  final alreadyDispute =
+                      m['alreadyDisputedByMe'] == true || _alreadyDisputedByMe[k] == true;
+
+                  final canCert = _canCertify(m);
+                  final canDispute = _canDispute(m);
 
                   final isExpanded = i == _expandedIndex;
 
@@ -1164,14 +1231,25 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                               fg: const Color(0xFF9A5B00),
                               icon: Icons.info_outline,
                             ),
-                          if (alreadyByMe)
+
+                          // My actions
+                          if (halalVerified && alreadyDispute)
+                            _chip(
+                              'You disputed',
+                              bg: const Color(0xFFE8EAF6),
+                              fg: const Color(0xFF303F9F),
+                              icon: Icons.person,
+                            ),
+                          if (!halalVerified && alreadyCert)
                             _chip(
                               'You reported',
                               bg: const Color(0xFFE8EAF6),
                               fg: const Color(0xFF303F9F),
                               icon: Icons.person,
                             ),
-                          if (!halalVerified && canMark)
+
+                          // Buttons (intent-aware)
+                          if (!halalVerified && canCert)
                             Padding(
                               padding: const EdgeInsets.only(left: 4),
                               child: OutlinedButton.icon(
@@ -1184,12 +1262,32 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                                   ),
                                 )
                                     : const Icon(Icons.add_task),
-                                label: Text(alreadyByMe
+                                label: Text(alreadyCert
                                     ? 'Submitted'
                                     : 'Mark as halal'),
                                 onPressed: _submittingIdx.contains(i)
                                     ? null
-                                    : () => _submitProposal(i, m),
+                                    : () => _submitProposal(i, m, intent: 'CERTIFY'),
+                              ),
+                            ),
+
+                          if (halalVerified && canDispute)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: OutlinedButton.icon(
+                                icon: _submittingIdx.contains(i)
+                                    ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                    : const Icon(Icons.report_gmailerrorred),
+                                label: const Text('Dispute verification'),
+                                onPressed: _submittingIdx.contains(i)
+                                    ? null
+                                    : () => _submitProposal(i, m, intent: 'DISPUTE'),
                               ),
                             ),
                         ],
