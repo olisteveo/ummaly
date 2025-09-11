@@ -68,7 +68,6 @@ class Restaurant {
 
     final String status =
         (json['halalStatusEffective'] as String?) ??
-            // fallback for older payloads that only had claimedHalal
             ((json['claimedHalal'] == true) ? 'CLAIMED_HALAL' : 'UNKNOWN');
 
     final bool verified =

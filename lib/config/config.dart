@@ -8,10 +8,10 @@ import 'dart:io';
 class AppConfig {
   static const bool useUsbDebugging = false; // set true if using `adb reverse tcp:5000 tcp:5000`
   static const String _adbReverseIp = "10.0.2.2"; // Android emulator loopback to host
-  static const String _wifiIp = "192.168.0.3";    // your local machine IP on Wi-Fi/LAN
+  static const String _wifiIp = "192.168.0.3";    // local machine IP on Wi-Fi/LAN
 
   // Can be just the host; _ensureScheme() will add https:// automatically.
-  static const String _ngrokUrl = "https://2ae11c65622d.ngrok-free.app";
+  static const String _ngrokUrl = "c66fd1b8f018.ngrok-free.app";
 
   // flutter run --dart-define=API_BASE=https://my-api.example.com
   static const String _apiBaseOverride =
