@@ -17,14 +17,17 @@ class BarcodeScanController extends ChangeNotifier {
   /// Loading step state for the overlay (drives “Step n / total”)
   int loadingStep = 1;
 
-  /// We now show AI as a distinct step → 4 total.
-  /// If you later want to make this dynamic, you can set it from /api/status or
-  /// from product.analysis_steps.length once you have it.
+  /// We show AI as a distinct step → 4 total (cert, ingredients, analysis, AI).
   int loadingTotal = 4;
 
+  /// Overlay texts
   String loadingTitle = 'Checking product…';
-  String loadingSubtitle = 'Certification registries, ingredients, and analysis';
-  Timer? _stepperTimer;
+  String loadingSubtitle = 'Certification, ingredients (OFF → OCR), analysis';
+
+  /// Optional short label shown under “Step n of m” (e.g., “Reading label…”)
+  String? loadingPhaseLabel;
+
+  Timer? _stepperTimer; // no longer used (kept for compatibility)
 
   /// Track torch state manually since MobileScanner 7.x removed getter
   final ValueNotifier<TorchState> torchState = ValueNotifier(TorchState.off);
@@ -47,13 +50,13 @@ class BarcodeScanController extends ChangeNotifier {
     errorMessage = null;
     productData = null;
 
-    // Init overlay stepper
+    // Init overlay with a neutral default
     loadingStep = 1;
-    loadingTotal = 4; // show AI adjudication as step 4
+    loadingTotal = 4; // may be overridden by onPhase or backend steps
     loadingTitle = 'Checking product…';
-    loadingSubtitle = 'Certification registries, ingredients, and analysis';
-    _startOverlayStepper();
-
+    loadingSubtitle = 'Certification, ingredients (OFF → OCR), analysis';
+    loadingPhaseLabel = null; // will be set by onPhase
+    // NOTE: we do NOT start the auto-stepper timer anymore.
     notifyListeners();
 
     // Stop camera immediately to avoid multiple detections of the same code
@@ -71,12 +74,25 @@ class BarcodeScanController extends ChangeNotifier {
       final product = await _scanService.scanProduct(
         barcode,
         firebaseUid: firebaseUid,
+        onPhase: (title, {String? subtitle, int? step, int? total}) {
+          // Drive the overlay precisely from the service phases
+          if (step != null) loadingStep = step;
+          if (total != null) loadingTotal = total;
+          loadingTitle = title;
+          if (subtitle != null) loadingSubtitle = subtitle;
+
+          // Show a concise phase label line (we can reuse the title)
+          loadingPhaseLabel = title;
+
+          isLoading = true; // ensure overlay visible during phases
+          notifyListeners();
+        },
       );
 
       if (product != null) {
         productData = product.toJson();
 
-        // If backend provides analysis_steps, we can reflect the true total
+        // If backend provides analysis_steps, reflect the true total
         final steps = (productData?['analysis_steps'] as List?) ?? const [];
         if (steps.isNotEmpty) {
           loadingTotal = steps.length; // typically 4 when AI is on
@@ -91,8 +107,9 @@ class BarcodeScanController extends ChangeNotifier {
       productData = null;
       errorMessage = "Network error: $e";
     } finally {
-      _stopOverlayStepper();
+      _stopOverlayStepper(); // no-op for safety (legacy)
       isLoading = false;
+      loadingPhaseLabel = null; // hide extra label when overlay goes away
       notifyListeners();
       // keep scanner paused so the ProductCard is visible; it resumes on "Scan again"
     }
@@ -110,7 +127,8 @@ class BarcodeScanController extends ChangeNotifier {
     loadingStep = 1;
     loadingTotal = 4;
     loadingTitle = 'Checking product…';
-    loadingSubtitle = 'Certification registries, ingredients, and analysis';
+    loadingSubtitle = 'Certification, ingredients (OFF → OCR), analysis';
+    loadingPhaseLabel = null;
 
     notifyListeners();
 
@@ -159,28 +177,9 @@ class BarcodeScanController extends ChangeNotifier {
     _safeStop();
   }
 
+  // Legacy stepper functions (kept for compatibility; no longer used)
   void _startOverlayStepper() {
-    _stepperTimer?.cancel();
-    _stepperTimer = Timer.periodic(const Duration(milliseconds: 900), (t) {
-      if (!isLoading) {
-        t.cancel();
-        return;
-      }
-      if (loadingStep < loadingTotal) {
-        loadingStep++;
-        // Keep user informed with step-specific subtitles
-        if (loadingStep == 2) {
-          loadingSubtitle = 'Fetching ingredients (ITS / OFF)…';
-        } else if (loadingStep == 3) {
-          loadingSubtitle = 'Analyzing (Rapid + Ummaly rules)…';
-        } else if (loadingStep == 4) {
-          loadingSubtitle = 'AI adjudication…';
-        }
-        notifyListeners();
-      } else {
-        t.cancel();
-      }
-    });
+    // Intentionally disabled: phases are now driven by the service via onPhase().
   }
 
   void _stopOverlayStepper() {

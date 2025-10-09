@@ -9,6 +9,10 @@ class ProcessingOverlay extends StatelessWidget {
   final String title;
   final String? subtitle;
 
+  /// Optional short label for the current phase, e.g. "AI adjudication…"
+  /// Shown under "Step n of m" when provided.
+  final String? phaseLabel;
+
   /// If you already know the step index (1-based) and total,
   /// pass them in. Otherwise you can just pass [dynamicTotalSteps].
   final int? step;
@@ -18,18 +22,27 @@ class ProcessingOverlay extends StatelessWidget {
   /// Only used when [totalSteps] is null.
   final int? dynamicTotalSteps;
 
+  /// When true, replaces the spinner with a check icon on final step.
+  final bool showCheckOnComplete;
+
   const ProcessingOverlay({
     super.key,
     required this.title,
     this.subtitle,
+    this.phaseLabel,
     this.step,
     this.totalSteps,
     this.dynamicTotalSteps,
+    this.showCheckOnComplete = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final resolvedTotal = totalSteps ?? dynamicTotalSteps;
+    final isComplete = step != null &&
+        resolvedTotal != null &&
+        step! >= resolvedTotal &&
+        showCheckOnComplete;
 
     return IgnorePointer(
       ignoring: true,
@@ -50,8 +63,10 @@ class ProcessingOverlay extends StatelessWidget {
               child: _LoadingCard(
                 title: title,
                 subtitle: subtitle,
+                phaseLabel: phaseLabel,
                 step: step,
                 totalSteps: resolvedTotal,
+                isComplete: isComplete,
               ),
             ),
           ],
@@ -64,14 +79,18 @@ class ProcessingOverlay extends StatelessWidget {
 class _LoadingCard extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final String? phaseLabel;
   final int? step;
   final int? totalSteps;
+  final bool isComplete;
 
   const _LoadingCard({
     required this.title,
     this.subtitle,
+    this.phaseLabel,
     this.step,
     this.totalSteps,
+    required this.isComplete,
   });
 
   @override
@@ -122,6 +141,16 @@ class _LoadingCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (phaseLabel != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                phaseLabel!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary.withOpacity(0.9),
+                ),
+              ),
+            ],
             const SizedBox(height: 6),
           ],
 
@@ -143,14 +172,20 @@ class _LoadingCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 16),
+
+          // Shimmer lines remain for visual movement even when complete
           const SizedBox(height: 2, width: 160, child: _ShimmerBar()),
           const SizedBox(height: 8),
           const SizedBox(height: 2, width: 120, child: _ShimmerBar()),
           const SizedBox(height: 16),
-          const SizedBox(
-            height: 24,
-            width: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
+
+          // Spinner → Checkmark when final step is reached
+          SizedBox(
+            height: 28,
+            width: 28,
+            child: isComplete
+                ? const Icon(Icons.check_circle_outline, size: 28)
+                : const CircularProgressIndicator(strokeWidth: 2),
           ),
         ],
       ),

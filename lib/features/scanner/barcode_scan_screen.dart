@@ -148,8 +148,10 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                             ? ProcessingOverlay(
                           title: controller.loadingTitle,
                           subtitle: controller.loadingSubtitle,
+                          phaseLabel: controller.loadingPhaseLabel, // NEW: short phase line
                           step: controller.loadingStep,
                           totalSteps: controller.loadingTotal,
+                          // showCheckOnComplete: true, // default
                         )
                             : const SizedBox.shrink(),
                       ),
