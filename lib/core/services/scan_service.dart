@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../config/config.dart';
 import '../models/product.dart';
+import 'ocr_service.dart';
 
 class ScanService {
   static Timer? _debounce;
@@ -11,6 +12,13 @@ class ScanService {
 
   static bool _backendChecked = false;
   static bool _backendOk = false;
+
+  final http.Client _client;
+  final OcrService _ocr;
+
+  ScanService({http.Client? client, OcrService? ocr})
+      : _client = client ?? http.Client(),
+        _ocr = ocr ?? OcrService();
 
   // --------- sanitizer ----------
   List<String> _sanitizeIngredientsDynamic(dynamic raw) {
@@ -101,13 +109,18 @@ class ScanService {
     return scanUri.replace(path: scanUri.path.replaceFirst('/api/scan', '/api/status')).toString();
   }
 
+  String _ocrUrlFromScan() {
+    final scanUri = _normalizeUrl(AppConfig.scanEndpoint, fallbackPath: '/api/scan');
+    return scanUri.replace(path: scanUri.path.replaceFirst('/api/scan', '/api/scan/ocr-text')).toString();
+  }
+
   Future<bool> _ensureBackendReachable() async {
     if (_backendChecked) return _backendOk;
     _backendChecked = true;
 
     final statusUrl = _statusUrlFromScan();
     try {
-      final res = await http
+      final res = await _client
           .get(Uri.parse(statusUrl), headers: {'X-Ummaly-Client': 'mobile'})
           .timeout(const Duration(seconds: 2));
       _backendOk = res.statusCode == 200;
@@ -120,10 +133,68 @@ class ScanService {
     return _backendOk;
   }
 
+  Future<Map<String, dynamic>> _scanCall({
+    required String barcode,
+    String? firebaseUid,
+    String? location,
+  }) async {
+    final uri = _normalizeUrl(AppConfig.scanEndpoint, fallbackPath: '/api/scan');
+    final payload = {
+      'barcode': barcode,
+      if (firebaseUid != null) 'firebase_uid': firebaseUid,
+      if (location != null) 'location': location,
+    };
+
+    final response = await _client
+        .post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Ummaly-Client': 'mobile',
+      },
+      body: jsonEncode(payload),
+    )
+        .timeout(const Duration(seconds: 8));
+
+    final Map<String, dynamic> data = jsonDecode(response.body.isEmpty ? '{}' : response.body);
+    if (response.statusCode >= 400) {
+      throw Exception(data['error'] ?? 'Scan failed (${response.statusCode})');
+    }
+    return data;
+  }
+
+  Future<void> _submitOcrText({
+    required String barcode,
+    required String text,
+    String? firebaseUid,
+    String? location,
+  }) async {
+    final uri = Uri.parse(_ocrUrlFromScan());
+    final payload = {
+      'barcode': barcode,
+      'text': text,
+      if (firebaseUid != null) 'firebase_uid': firebaseUid,
+      if (location != null) 'location': location,
+    };
+    final r = await _client
+        .post(
+      uri,
+      headers: {'Content-Type': 'application/json', 'X-Ummaly-Client': 'mobile'},
+      body: jsonEncode(payload),
+    )
+        .timeout(const Duration(seconds: 8));
+    if (r.statusCode >= 400) {
+      final j = jsonDecode(r.body.isEmpty ? '{}' : r.body);
+      throw Exception(j['error'] ?? 'OCR submit failed (${r.statusCode})');
+    }
+  }
+
+  /// High-level scan with explicit phase callbacks for crisp UX.
   Future<Product?> scanProduct(
       String barcode, {
         String? firebaseUid,
         String? location,
+        void Function(String title, {String? subtitle, int? step, int? total})? onPhase,
       }) async {
     if (_cache.containsKey(barcode)) {
       print("[ScanService] Returning cached product for [$barcode]");
@@ -137,50 +208,71 @@ class ScanService {
       try {
         await _ensureBackendReachable();
 
-        final uri = _normalizeUrl(AppConfig.scanEndpoint, fallbackPath: '/api/scan');
-        print("[ScanService] Sending barcode [$barcode] to backend: $uri");
+        onPhase?.call('Fetching from Open Food Facts…', step: 1, total: 4);
 
-        final payload = {
-          'barcode': barcode,
-          if (firebaseUid != null) 'firebase_uid': firebaseUid,
-          if (location != null) 'location': location,
-        };
+        print("[ScanService] Sending barcode [$barcode] to backend…");
+        // 1) First attempt (OFF path on backend)
+        Map<String, dynamic> data = await _scanCall(
+          barcode: barcode,
+          firebaseUid: firebaseUid,
+          location: location,
+        );
 
-        final response = await http
-            .post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Ummaly-Client': 'mobile',
-          },
-          body: jsonEncode(payload),
-        )
-            .timeout(const Duration(seconds: 8));
+        // 2) OCR fallback
+        if (data['status'] == 'needs_photo') {
+          onPhase?.call(
+            'Reading label…',
+            subtitle: 'Point camera at the ingredients panel',
+            step: 2,
+            total: 4,
+          );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = jsonDecode(response.body);
-          if (data.containsKey('product') && data['product'] != null) {
-            final productData = Map<String, dynamic>.from(data['product']);
-
-            final rawList = productData['ingredients_list'] ??
-                productData['ingredientsList'] ??
-                productData['ingredients'] ??
-                productData['ingredientsText'];
-
-            final cleanList = _sanitizeIngredientsDynamic(rawList);
-            _applySanitizedFields(productData, cleanList);
-
-            print("[ScanService] Product found: ${productData['name']}");
-            final product = Product.fromJson(productData);
-
-            _cache[barcode] = product;
-            completer.complete(product);
-          } else {
-            print("[ScanService] No product key in response");
+          print("[ScanService] Backend requested OCR → opening camera");
+          final text = await _ocr.captureAndRecognize();
+          if (text == null || text.trim().length < 5) {
+            print("[ScanService] No label text captured (cancelled/empty)");
             completer.complete(null);
+            return;
           }
+
+          await _submitOcrText(
+            barcode: barcode,
+            text: text.trim(),
+            firebaseUid: firebaseUid,
+            location: location,
+          );
+
+          onPhase?.call('Analyzing ingredients…', step: 3, total: 4);
+
+          // 3) Re-scan (now DB path + orchestrator)
+          data = await _scanCall(
+            barcode: barcode,
+            firebaseUid: firebaseUid,
+            location: location,
+          );
         } else {
-          print("[ScanService] Backend error: ${response.statusCode} - ${response.body}");
+          // OFF already had ingredients; the backend ran analysis synchronously.
+          onPhase?.call('Analyzing ingredients…', step: 3, total: 4);
+        }
+
+        if (data.containsKey('product') && data['product'] != null) {
+          final productData = Map<String, dynamic>.from(data['product']);
+
+          final rawList = productData['ingredients_list'] ??
+              productData['ingredientsList'] ??
+              productData['ingredients'] ??
+              productData['ingredientsText'];
+
+          final cleanList = _sanitizeIngredientsDynamic(rawList);
+          _applySanitizedFields(productData, cleanList);
+
+          print("[ScanService] Product found: ${productData['name']}");
+          final product = Product.fromJson(productData);
+
+          _cache[barcode] = product;
+          completer.complete(product);
+        } else {
+          print("[ScanService] No product key in response");
           completer.complete(null);
         }
       } catch (e) {
