@@ -9,15 +9,21 @@ environment:
 
 dependencies:
   http: ^1.2.0
-  dio: ^5.4.3+1   # For API requests to backend
+  dio: ^5.4.3+1           # For API requests to backend
   flutter:
     sdk: flutter
-  geolocator: ^11.0.0
-  google_maps_flutter: ^2.7.0   # ✅ Google Maps (Flutter)
 
-  # Core UI and icons
+  # Location + Maps
+  geolocator: ^11.0.0
+  google_maps_flutter: ^2.7.0
+
+  # Core UI and barcode scanning
   cupertino_icons: ^1.0.8
   mobile_scanner: ^7.0.1
+
+  # OCR + camera
+  image_picker: ^1.1.2
+  google_mlkit_text_recognition: ^0.13.0
 
   # Firebase core services and authentication
   firebase_core: ^4.0.0
@@ -27,14 +33,14 @@ dependencies:
   # Facebook auth
   flutter_facebook_auth: ^7.1.2
 
-  # State management
+  # State management & navigation
   provider: ^6.1.2
-  get: ^4.6.6   # For reactive state management and navigation
+  get: ^4.6.6
 
   # Localization support
   easy_localization: ^3.0.3
 
-  # 📍 Open in Google/Apple Maps
+  # Open in Google/Apple Maps
   url_launcher: ^6.3.0
 
 dev_dependencies:

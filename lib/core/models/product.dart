@@ -64,9 +64,21 @@ class Product {
   final String barcode;
   final String name;
   final String? brand;
+
+  /// Raw ingredients text (legacy)
   final String? ingredients;
+
+  /// Normalized ingredients text (new)
+  final String? ingredientsNormalized;
+
   final String? imageUrl;
   final String halalStatus;
+
+  /// OFF / OCR / null
+  final String? bestSource;
+
+  /// When the backend last checked/updated this product
+  final DateTime? lastCheckedAt;
 
   final List<HalalMatch> halalMatches;
 
@@ -85,8 +97,11 @@ class Product {
     required this.name,
     this.brand,
     this.ingredients,
+    this.ingredientsNormalized,
     this.imageUrl,
     required this.halalStatus,
+    this.bestSource,
+    this.lastCheckedAt,
     required this.halalMatches,
     this.confidence,
     this.notes,
@@ -101,11 +116,13 @@ class Product {
     if (v is int) return v;
     return int.tryParse(v.toString());
   }
+
   static double? _toDouble(dynamic v) {
     if (v == null) return null;
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString());
   }
+
   static bool? _toBool(dynamic v) {
     if (v == null) return null;
     if (v is bool) return v;
@@ -114,7 +131,19 @@ class Product {
     if (s == 'false') return false;
     return null;
   }
+
   static String? _str(dynamic v) => v?.toString();
+
+  static DateTime? _toDate(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    final s = v.toString();
+    try {
+      return DateTime.tryParse(s);
+    } catch (_) {
+      return null;
+    }
+  }
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final List<dynamic> matchesRaw =
@@ -140,8 +169,13 @@ class Product {
       name: _str(json['name']) ?? '',
       brand: _str(json['brand']),
       ingredients: _str(json['ingredients']),
+      ingredientsNormalized:
+      _str(json['ingredients_normalized'] ?? json['ingredientsNormalized']),
       imageUrl: imageUrl,
       halalStatus: halalStatus,
+      bestSource: _str(json['best_source'] ?? json['bestSource']),
+      lastCheckedAt:
+      _toDate(json['last_checked_at'] ?? json['lastCheckedAt']),
       halalMatches: matchesRaw
           .whereType<Map>()
           .map((e) => HalalMatch.fromJson(e.cast<String, dynamic>()))
@@ -164,8 +198,11 @@ class Product {
       'name': name,
       'brand': brand,
       'ingredients': ingredients,
+      'ingredients_normalized': ingredientsNormalized,
       'image_url': imageUrl,
       'halal_status': halalStatus,
+      if (bestSource != null) 'best_source': bestSource,
+      if (lastCheckedAt != null) 'last_checked_at': lastCheckedAt!.toIso8601String(),
       'halal_matches': halalMatches.map((m) => m.toJson()).toList(),
       if (confidence != null) 'confidence': confidence,
       if (notes != null) 'notes': notes,
@@ -181,8 +218,11 @@ class Product {
     String? name,
     String? brand,
     String? ingredients,
+    String? ingredientsNormalized,
     String? imageUrl,
     String? halalStatus,
+    String? bestSource,
+    DateTime? lastCheckedAt,
     List<HalalMatch>? halalMatches,
     double? confidence,
     String? notes,
@@ -196,8 +236,12 @@ class Product {
       name: name ?? this.name,
       brand: brand ?? this.brand,
       ingredients: ingredients ?? this.ingredients,
+      ingredientsNormalized:
+      ingredientsNormalized ?? this.ingredientsNormalized,
       imageUrl: imageUrl ?? this.imageUrl,
       halalStatus: halalStatus ?? this.halalStatus,
+      bestSource: bestSource ?? this.bestSource,
+      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
       halalMatches: halalMatches ?? this.halalMatches,
       confidence: confidence ?? this.confidence,
       notes: notes ?? this.notes,
