@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 /// Central app networking configuration.
 /// Chooses an API base URL in this order:
@@ -8,10 +8,10 @@ import 'dart:io';
 class AppConfig {
   static const bool useUsbDebugging = false; // set true if using `adb reverse tcp:5000 tcp:5000`
   static const String _adbReverseIp = "10.0.2.2"; // Android emulator loopback to host
-  static const String _wifiIp = "192.168.0.3";    // local machine IP on Wi-Fi/LAN
+  static const String _wifiIp = "192.168.0.52";   // local machine IP on Wi-Fi/LAN
 
   // Can be just the host; _ensureScheme() will add https:// automatically.
-  static const String _ngrokUrl = "883eecf1f737.ngrok-free.app";
+  static const String _ngrokUrl = ""; // cleared — using local IP for dev
 
   // flutter run --dart-define=API_BASE=https://my-api.example.com
   static const String _apiBaseOverride =
@@ -35,11 +35,12 @@ class AppConfig {
       final withScheme = _ensureScheme(_ngrokUrl.trim());
       return _stripTrailingSlash(withScheme);
     }
-    final local = Platform.isAndroid
+    final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final local = isAndroid
         ? (useUsbDebugging
-        ? "http://$_adbReverseIp:5000"
-        : "http://$_wifiIp:5000")
-        : "http://$_wifiIp:5000";
+        ? "http://$_adbReverseIp:3001"
+        : "http://$_wifiIp:3001")
+        : "http://$_wifiIp:3001";
     return _stripTrailingSlash(local);
   }
 

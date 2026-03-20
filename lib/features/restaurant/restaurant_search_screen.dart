@@ -205,6 +205,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
     _nearCtrl.dispose();
     _radiusDebounce?.cancel();
     _sheetCtrl.removeListener(_onSheetSizeChanged);
+    _sheetCtrl.dispose();
     _mapCtrl?.dispose();
     super.dispose();
   }
@@ -1006,22 +1007,6 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
             ),
           ),
 
-          // Re-center floating button (below the search header)
-          Positioned(
-            top: _mapTopUiPaddingPx,
-            right: AppSpacing.l,
-            child: Material(
-              color: AppColors.surface,
-              shape: const CircleBorder(),
-              elevation: 2,
-              child: IconButton(
-                tooltip: 'Recenter',
-                onPressed: _fitMapToPinsRespectingRadius,
-                icon: const Icon(Icons.center_focus_strong),
-              ),
-            ),
-          ),
-
           // Search header
           SafeArea(
             child: Padding(
@@ -1127,7 +1112,9 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                     AppSpacing.l, 0, AppSpacing.l, AppSpacing.l),
                 itemCount: _items.length,
                 itemBuilder: (context, i) {
-                  final m = _items[i] as Map;
+                  final item = _items[i];
+                  if (item is! Map) return const SizedBox.shrink();
+                  final m = item;
                   final name = m['name']?.toString() ?? 'Unknown';
                   final address = m['address']?.toString() ?? '';
                   final lat = _asDouble(m['latitude']);

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="224" fill="#0F1A2E"/>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="40%">
+      <stop offset="0%" stop-color="#D4A574" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#D4A574" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="512.0" cy="435.2" r="380" fill="url(#glow)"/>
+  <path d="M 153.6 839.68 L 225.28 839.68 L 225.28 554.1888 Q 248.32 505.4464 271.36 554.1888 L 271.36 839.68 L 348.16 839.68 L 348.16 658.6368 Q 512.0 519.3728 675.84 658.6368 L 675.84 839.68 L 752.64 839.68 L 752.64 554.1888 Q 775.68 505.4464 798.72 554.1888 L 798.72 839.68 L 870.4 839.68 Z" fill="#D4A574" fill-opacity="0.25"/>
+  <path d="M 153.6 839.68 L 225.28 839.68 L 225.28 554.1888 Q 248.32 505.4464 271.36 554.1888 L 271.36 839.68 L 348.16 839.68 L 348.16 658.6368 Q 512.0 519.3728 675.84 658.6368 L 675.84 839.68 L 752.64 839.68 L 752.64 554.1888 Q 775.68 505.4464 798.72 554.1888 L 798.72 839.68 L 870.4 839.68" fill="none" stroke="#D4A574" stroke-width="3" stroke-opacity="0.6"/>
+  <circle cx="248.32" cy="498.48319999999995" r="6" fill="#D4A574" fill-opacity="0.5"/>
+  <circle cx="775.68" cy="498.48319999999995" r="6" fill="#D4A574" fill-opacity="0.5"/>
+  <circle cx="512.0" cy="512.4096" r="8" fill="#D4A574" fill-opacity="0.5"/>
+  <defs>
+    <clipPath id="crescent-clip">
+      <rect x="0" y="0" width="1024" height="1024"/>
+    </clipPath>
+  </defs>
+  <mask id="crescent-mask">
+    <rect width="1024" height="1024" fill="black"/>
+    <circle cx="512.0" cy="368.64" r="194.56" fill="white"/>
+    <circle cx="585.9328" cy="358.912" r="159.5392" fill="black"/>
+  </mask>
+  <rect width="1024" height="1024" fill="#D4A574" mask="url(#crescent-mask)"/>
+  <polygon points="613.17,302.49 625.52,332.18 657.58,334.75 633.16,355.68 640.62,386.96 613.17,370.20 585.72,386.96 593.19,355.68 568.76,334.75 600.82,332.18" fill="#D4A574"/>
+</svg>

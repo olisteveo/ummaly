@@ -15,7 +15,7 @@ dependencies:
   geolocator: ^11.0.0
   google_maps_flutter: ^2.7.0   # ✅ Google Maps (Flutter)
   image_picker: ^1.1.2
-  google_mlkit_text_recognition: ^0.14.0
+  google_mlkit_text_recognition: ^0.15.0
 
 
   # Core UI and icons
@@ -27,9 +27,6 @@ dependencies:
   firebase_auth: ^6.0.0
   cloud_firestore: ^6.0.0
 
-  # Facebook auth
-  flutter_facebook_auth: ^7.1.2
-
   # State management
   provider: ^6.1.2
   get: ^4.6.6   # For reactive state management and navigation
@@ -40,10 +37,30 @@ dependencies:
   # 📍 Open in Google/Apple Maps
   url_launcher: ^6.3.0
 
+  # Local storage
+  shared_preferences: ^2.3.4
+
+  # Google Sign In
+  google_sign_in: ^6.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/ummaly_icon.png"
+  adaptive_icon_background: "#0F1A2E"
+  adaptive_icon_foreground: "assets/images/ummaly_icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/images/ummaly_icon.png"
+    background_color: "#0F1A2E"
+    theme_color: "#0F1A2E"
 
 flutter:
   uses-material-design: true
@@ -52,3 +69,4 @@ flutter:
     - assets/translations/
     - assets/translations_lazy/
     - assets/images/ummaly_logo.jpg
+    - assets/islamic_data/

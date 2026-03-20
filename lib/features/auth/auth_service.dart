@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -59,8 +58,6 @@ class AuthService {
           '${response.statusCode} ${response.body}');
     } on TimeoutException {
       throw Exception('Registration timed out against ${AppConfig.baseUrl}');
-    } on SocketException catch (e) {
-      throw Exception('Network error during registration: $e');
     } catch (e) {
       throw Exception('Registration error: $e');
     }
@@ -109,8 +106,6 @@ class AuthService {
           '${response.statusCode} ${response.body}');
     } on TimeoutException {
       throw Exception('Login timed out against ${AppConfig.baseUrl}');
-    } on SocketException catch (e) {
-      throw Exception('Network error during login: $e');
     } catch (e) {
       throw Exception('Login error: $e');
     }

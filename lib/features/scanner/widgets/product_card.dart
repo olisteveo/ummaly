@@ -65,11 +65,13 @@ class _ProductCardState extends State<ProductCard> {
   }
 
   Future<void> _fetchFlagMeta(int productId) async {
+    if (!mounted) return;
     setState(() => _loadingFlagMeta = true);
     try {
       final svc = ProductFlagService();
       final me = await svc.getMyFlag(productId: productId);
       final summary = await svc.getSummary(productId: productId);
+      if (!mounted) return;
       setState(() {
         _myFlagged = (me?['flagged'] as bool?) ?? false;
         _flagsCount = (summary['count'] as int?) ?? 0;

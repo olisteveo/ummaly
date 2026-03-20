@@ -64,9 +64,9 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     final String firebaseUid =
                         FirebaseAuth.instance.currentUser?.uid ?? '';
                     if (firebaseUid.isNotEmpty) {
-                      await controller.cameraController.stop();
+                      try { await controller.cameraController.stop(); } catch (_) {}
                       await Get.to(() => ScanHistoryScreen(firebaseUid: firebaseUid));
-                      await controller.cameraController.start();
+                      try { await controller.cameraController.start(); } catch (_) {}
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('You need to log in first')),

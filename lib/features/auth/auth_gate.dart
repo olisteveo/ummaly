@@ -7,7 +7,7 @@ import 'package:flutter/painting.dart' as painting;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:ummaly/config/config.dart';        // ✅ Use AppConfig
-import 'package:ummaly/features/home/home_screen.dart';
+import 'package:ummaly/features/shell/app_shell.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
 import 'package:ummaly/core/widgets/snackbar_helper.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -132,7 +132,7 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        return const HomeScreen();
+        return const AppShell();
       },
     );
   }
