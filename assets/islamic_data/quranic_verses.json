@@ -1,52 +1,1827 @@
 [
-  {"text": "Indeed, with hardship comes ease.", "ref": "Quran 94:5", "arabic": "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا"},
-  {"text": "And He found you lost and guided you.", "ref": "Quran 93:7", "arabic": "وَوَجَدَكَ ضَالًّا فَهَدَىٰ"},
-  {"text": "So verily, with hardship, there is relief.", "ref": "Quran 94:6", "arabic": "إِنَّ مَعَ الْعُسْرِ يُسْرًا"},
-  {"text": "Allah does not burden a soul beyond that it can bear.", "ref": "Quran 2:286", "arabic": "لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا"},
-  {"text": "And whoever puts their trust in Allah, He will be enough for them.", "ref": "Quran 65:3", "arabic": "وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ"},
-  {"text": "My mercy encompasses all things.", "ref": "Quran 7:156", "arabic": "وَرَحْمَتِي وَسِعَتْ كُلَّ شَيْءٍ"},
-  {"text": "Remember Me, and I will remember you.", "ref": "Quran 2:152", "arabic": "فَاذْكُرُونِي أَذْكُرْكُمْ"},
-  {"text": "And We have certainly made the Quran easy to remember. So is there anyone who will be mindful?", "ref": "Quran 54:17", "arabic": "وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ"},
-  {"text": "Whoever does righteousness, whether male or female, while being a believer — those will enter Paradise.", "ref": "Quran 4:124", "arabic": null},
-  {"text": "And speak to people good words.", "ref": "Quran 2:83", "arabic": "وَقُولُوا لِلنَّاسِ حُسْنًا"},
-  {"text": "Indeed, Allah is with the patient.", "ref": "Quran 2:153", "arabic": "إِنَّ اللَّهَ مَعَ الصَّابِرِينَ"},
-  {"text": "He is with you wherever you are.", "ref": "Quran 57:4", "arabic": "وَهُوَ مَعَكُمْ أَيْنَ مَا كُنتُمْ"},
-  {"text": "And your Lord says, Call upon Me; I will respond to you.", "ref": "Quran 40:60", "arabic": "ادْعُونِي أَسْتَجِبْ لَكُمْ"},
-  {"text": "Do not lose hope in the mercy of Allah.", "ref": "Quran 39:53", "arabic": "لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ"},
-  {"text": "Whoever kills a soul — it is as if he had slain all mankind. And whoever saves one — it is as if he had saved all mankind.", "ref": "Quran 5:32", "arabic": null},
-  {"text": "The believers are but brothers, so make settlement between your brothers.", "ref": "Quran 49:10", "arabic": "إِنَّمَا الْمُؤْمِنُونَ إِخْوَةٌ"},
-  {"text": "O mankind, indeed We have created you from male and female and made you peoples and tribes that you may know one another.", "ref": "Quran 49:13", "arabic": null},
-  {"text": "Indeed, the most noble of you in the sight of Allah is the most righteous of you.", "ref": "Quran 49:13", "arabic": "إِنَّ أَكْرَمَكُمْ عِندَ اللَّهِ أَتْقَاكُمْ"},
-  {"text": "And do good; indeed, Allah loves the doers of good.", "ref": "Quran 2:195", "arabic": "وَأَحْسِنُوا إِنَّ اللَّهَ يُحِبُّ الْمُحْسِنِينَ"},
-  {"text": "So which of the favors of your Lord would you deny?", "ref": "Quran 55:13", "arabic": "فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ"},
-  {"text": "Read! In the name of your Lord who created.", "ref": "Quran 96:1", "arabic": "اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ"},
-  {"text": "And We have certainly honored the children of Adam.", "ref": "Quran 17:70", "arabic": "وَلَقَدْ كَرَّمْنَا بَنِي آدَمَ"},
-  {"text": "Allah is the Light of the heavens and the earth.", "ref": "Quran 24:35", "arabic": "اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ"},
-  {"text": "And in the earth are signs for those who have certainty.", "ref": "Quran 51:20", "arabic": "وَفِي الْأَرْضِ آيَاتٌ لِّلْمُوقِنِينَ"},
-  {"text": "Among His Signs is the creation of the heavens and the earth, and the diversity of your languages and colors.", "ref": "Quran 30:22", "arabic": null},
-  {"text": "Verily, in the remembrance of Allah do hearts find rest.", "ref": "Quran 13:28", "arabic": "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ"},
-  {"text": "And the servants of the Most Merciful are those who walk upon the earth easily, and when the ignorant address them, they say words of peace.", "ref": "Quran 25:63", "arabic": null},
-  {"text": "And We send down of the Quran that which is healing and mercy for the believers.", "ref": "Quran 17:82", "arabic": null},
-  {"text": "Allah is the ally of those who believe. He brings them out from darknesses into the light.", "ref": "Quran 2:257", "arabic": null},
-  {"text": "And hold firmly to the rope of Allah all together and do not become divided.", "ref": "Quran 3:103", "arabic": "وَاعْتَصِمُوا بِحَبْلِ اللَّهِ جَمِيعًا وَلَا تَفَرَّقُوا"},
-  {"text": "He knows what is in every heart.", "ref": "Quran 67:13", "arabic": "إِنَّهُ عَلِيمٌ بِذَاتِ الصُّدُورِ"},
-  {"text": "And be patient, for indeed, Allah does not allow to be lost the reward of those who do good.", "ref": "Quran 11:115", "arabic": null},
-  {"text": "And it is He who created the night and the day and the sun and the moon; all in an orbit are swimming.", "ref": "Quran 21:33", "arabic": null},
-  {"text": "The example of those who spend their wealth in the way of Allah is like a seed of grain that sprouts seven ears; in every ear there are a hundred grains.", "ref": "Quran 2:261", "arabic": null},
-  {"text": "And say: My Lord, increase me in knowledge.", "ref": "Quran 20:114", "arabic": "وَقُل رَّبِّ زِدْنِي عِلْمًا"},
-  {"text": "If you are grateful, I will surely increase you.", "ref": "Quran 14:7", "arabic": "لَئِن شَكَرْتُمْ لَأَزِيدَنَّكُمْ"},
-  {"text": "And whoever fears Allah — He will make for him a way out.", "ref": "Quran 65:2", "arabic": "وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا"},
-  {"text": "And to Allah belongs the east and the west. So wherever you turn, there is the Face of Allah.", "ref": "Quran 2:115", "arabic": null},
-  {"text": "We have created man in the best of forms.", "ref": "Quran 95:4", "arabic": "لَقَدْ خَلَقْنَا الْإِنسَانَ فِي أَحْسَنِ تَقْوِيمٍ"},
-  {"text": "And of His signs is that He created for you from yourselves mates that you may find tranquility in them.", "ref": "Quran 30:21", "arabic": null},
-  {"text": "Those who believe and do righteous deeds — for them is forgiveness and great reward.", "ref": "Quran 35:7", "arabic": null},
-  {"text": "Every soul will taste death. And you will only be given your full compensation on the Day of Resurrection.", "ref": "Quran 3:185", "arabic": "كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ"},
-  {"text": "And We created you in pairs.", "ref": "Quran 78:8", "arabic": "وَخَلَقْنَاكُمْ أَزْوَاجًا"},
-  {"text": "And He is with you wherever you are. And Allah, of what you do, is Seeing.", "ref": "Quran 57:4", "arabic": null},
-  {"text": "Then do you wonder that a reminder has come to you from your Lord through a man from among you?", "ref": "Quran 7:63", "arabic": null},
-  {"text": "And when My servants ask you concerning Me — indeed I am near. I respond to the invocation of the supplicant when he calls upon Me.", "ref": "Quran 2:186", "arabic": null},
-  {"text": "And We have already created man and We know what his soul whispers to him, and We are closer to him than his jugular vein.", "ref": "Quran 50:16", "arabic": null},
-  {"text": "So be patient. Indeed, the promise of Allah is truth.", "ref": "Quran 30:60", "arabic": "فَاصْبِرْ إِنَّ وَعْدَ اللَّهِ حَقٌّ"},
-  {"text": "There shall be no compulsion in religion. The right course has become clear from the wrong.", "ref": "Quran 2:256", "arabic": "لَا إِكْرَاهَ فِي الدِّينِ"},
-  {"text": "Repel evil by that which is better, and thereupon the one whom between you and him is enmity will become as though he was a devoted friend.", "ref": "Quran 41:34", "arabic": null}
+  {
+    "text": "Indeed, with hardship comes ease.",
+    "ref": "Quran 94:5",
+    "arabic": "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا"
+  },
+  {
+    "text": "And He found you lost and guided you.",
+    "ref": "Quran 93:7",
+    "arabic": "وَوَجَدَكَ ضَالًّا فَهَدَىٰ"
+  },
+  {
+    "text": "So verily, with hardship, there is relief.",
+    "ref": "Quran 94:6",
+    "arabic": "إِنَّ مَعَ الْعُسْرِ يُسْرًا"
+  },
+  {
+    "text": "Allah does not burden a soul beyond that it can bear.",
+    "ref": "Quran 2:286",
+    "arabic": "لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا"
+  },
+  {
+    "text": "And whoever puts their trust in Allah, He will be enough for them.",
+    "ref": "Quran 65:3",
+    "arabic": "وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ"
+  },
+  {
+    "text": "My mercy encompasses all things.",
+    "ref": "Quran 7:156",
+    "arabic": "وَرَحْمَتِي وَسِعَتْ كُلَّ شَيْءٍ"
+  },
+  {
+    "text": "Remember Me, and I will remember you.",
+    "ref": "Quran 2:152",
+    "arabic": "فَاذْكُرُونِي أَذْكُرْكُمْ"
+  },
+  {
+    "text": "And We have certainly made the Quran easy to remember. So is there anyone who will be mindful?",
+    "ref": "Quran 54:17",
+    "arabic": "وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ"
+  },
+  {
+    "text": "Whoever does righteousness, whether male or female, while being a believer — those will enter Paradise.",
+    "ref": "Quran 4:124",
+    "arabic": null
+  },
+  {
+    "text": "And speak to people good words.",
+    "ref": "Quran 2:83",
+    "arabic": "وَقُولُوا لِلنَّاسِ حُسْنًا"
+  },
+  {
+    "text": "Indeed, Allah is with the patient.",
+    "ref": "Quran 2:153",
+    "arabic": "إِنَّ اللَّهَ مَعَ الصَّابِرِينَ"
+  },
+  {
+    "text": "He is with you wherever you are.",
+    "ref": "Quran 57:4",
+    "arabic": "وَهُوَ مَعَكُمْ أَيْنَ مَا كُنتُمْ"
+  },
+  {
+    "text": "And your Lord says, Call upon Me; I will respond to you.",
+    "ref": "Quran 40:60",
+    "arabic": "ادْعُونِي أَسْتَجِبْ لَكُمْ"
+  },
+  {
+    "text": "Do not lose hope in the mercy of Allah.",
+    "ref": "Quran 39:53",
+    "arabic": "لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ"
+  },
+  {
+    "text": "Whoever kills a soul — it is as if he had slain all mankind. And whoever saves one — it is as if he had saved all mankind.",
+    "ref": "Quran 5:32",
+    "arabic": null
+  },
+  {
+    "text": "The believers are but brothers, so make settlement between your brothers.",
+    "ref": "Quran 49:10",
+    "arabic": "إِنَّمَا الْمُؤْمِنُونَ إِخْوَةٌ"
+  },
+  {
+    "text": "O mankind, indeed We have created you from male and female and made you peoples and tribes that you may know one another.",
+    "ref": "Quran 49:13",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, the most noble of you in the sight of Allah is the most righteous of you.",
+    "ref": "Quran 49:13",
+    "arabic": "إِنَّ أَكْرَمَكُمْ عِندَ اللَّهِ أَتْقَاكُمْ"
+  },
+  {
+    "text": "And do good; indeed, Allah loves the doers of good.",
+    "ref": "Quran 2:195",
+    "arabic": "وَأَحْسِنُوا إِنَّ اللَّهَ يُحِبُّ الْمُحْسِنِينَ"
+  },
+  {
+    "text": "So which of the favors of your Lord would you deny?",
+    "ref": "Quran 55:13",
+    "arabic": "فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ"
+  },
+  {
+    "text": "Read! In the name of your Lord who created.",
+    "ref": "Quran 96:1",
+    "arabic": "اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ"
+  },
+  {
+    "text": "And We have certainly honored the children of Adam.",
+    "ref": "Quran 17:70",
+    "arabic": "وَلَقَدْ كَرَّمْنَا بَنِي آدَمَ"
+  },
+  {
+    "text": "Allah is the Light of the heavens and the earth.",
+    "ref": "Quran 24:35",
+    "arabic": "اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ"
+  },
+  {
+    "text": "And in the earth are signs for those who have certainty.",
+    "ref": "Quran 51:20",
+    "arabic": "وَفِي الْأَرْضِ آيَاتٌ لِّلْمُوقِنِينَ"
+  },
+  {
+    "text": "Among His Signs is the creation of the heavens and the earth, and the diversity of your languages and colors.",
+    "ref": "Quran 30:22",
+    "arabic": null
+  },
+  {
+    "text": "Verily, in the remembrance of Allah do hearts find rest.",
+    "ref": "Quran 13:28",
+    "arabic": "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ"
+  },
+  {
+    "text": "And the servants of the Most Merciful are those who walk upon the earth easily, and when the ignorant address them, they say words of peace.",
+    "ref": "Quran 25:63",
+    "arabic": null
+  },
+  {
+    "text": "And We send down of the Quran that which is healing and mercy for the believers.",
+    "ref": "Quran 17:82",
+    "arabic": null
+  },
+  {
+    "text": "Allah is the ally of those who believe. He brings them out from darknesses into the light.",
+    "ref": "Quran 2:257",
+    "arabic": null
+  },
+  {
+    "text": "And hold firmly to the rope of Allah all together and do not become divided.",
+    "ref": "Quran 3:103",
+    "arabic": "وَاعْتَصِمُوا بِحَبْلِ اللَّهِ جَمِيعًا وَلَا تَفَرَّقُوا"
+  },
+  {
+    "text": "He knows what is in every heart.",
+    "ref": "Quran 67:13",
+    "arabic": "إِنَّهُ عَلِيمٌ بِذَاتِ الصُّدُورِ"
+  },
+  {
+    "text": "And be patient, for indeed, Allah does not allow to be lost the reward of those who do good.",
+    "ref": "Quran 11:115",
+    "arabic": null
+  },
+  {
+    "text": "And it is He who created the night and the day and the sun and the moon; all in an orbit are swimming.",
+    "ref": "Quran 21:33",
+    "arabic": null
+  },
+  {
+    "text": "The example of those who spend their wealth in the way of Allah is like a seed of grain that sprouts seven ears; in every ear there are a hundred grains.",
+    "ref": "Quran 2:261",
+    "arabic": null
+  },
+  {
+    "text": "And say: My Lord, increase me in knowledge.",
+    "ref": "Quran 20:114",
+    "arabic": "وَقُل رَّبِّ زِدْنِي عِلْمًا"
+  },
+  {
+    "text": "If you are grateful, I will surely increase you.",
+    "ref": "Quran 14:7",
+    "arabic": "لَئِن شَكَرْتُمْ لَأَزِيدَنَّكُمْ"
+  },
+  {
+    "text": "And whoever fears Allah — He will make for him a way out.",
+    "ref": "Quran 65:2",
+    "arabic": "وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا"
+  },
+  {
+    "text": "And to Allah belongs the east and the west. So wherever you turn, there is the Face of Allah.",
+    "ref": "Quran 2:115",
+    "arabic": null
+  },
+  {
+    "text": "We have created man in the best of forms.",
+    "ref": "Quran 95:4",
+    "arabic": "لَقَدْ خَلَقْنَا الْإِنسَانَ فِي أَحْسَنِ تَقْوِيمٍ"
+  },
+  {
+    "text": "And of His signs is that He created for you from yourselves mates that you may find tranquility in them.",
+    "ref": "Quran 30:21",
+    "arabic": null
+  },
+  {
+    "text": "Those who believe and do righteous deeds — for them is forgiveness and great reward.",
+    "ref": "Quran 35:7",
+    "arabic": null
+  },
+  {
+    "text": "Every soul will taste death. And you will only be given your full compensation on the Day of Resurrection.",
+    "ref": "Quran 3:185",
+    "arabic": "كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ"
+  },
+  {
+    "text": "And We created you in pairs.",
+    "ref": "Quran 78:8",
+    "arabic": "وَخَلَقْنَاكُمْ أَزْوَاجًا"
+  },
+  {
+    "text": "And He is with you wherever you are. And Allah, of what you do, is Seeing.",
+    "ref": "Quran 57:4",
+    "arabic": null
+  },
+  {
+    "text": "Then do you wonder that a reminder has come to you from your Lord through a man from among you?",
+    "ref": "Quran 7:63",
+    "arabic": null
+  },
+  {
+    "text": "And when My servants ask you concerning Me — indeed I am near. I respond to the invocation of the supplicant when he calls upon Me.",
+    "ref": "Quran 2:186",
+    "arabic": null
+  },
+  {
+    "text": "And We have already created man and We know what his soul whispers to him, and We are closer to him than his jugular vein.",
+    "ref": "Quran 50:16",
+    "arabic": null
+  },
+  {
+    "text": "So be patient. Indeed, the promise of Allah is truth.",
+    "ref": "Quran 30:60",
+    "arabic": "فَاصْبِرْ إِنَّ وَعْدَ اللَّهِ حَقٌّ"
+  },
+  {
+    "text": "There shall be no compulsion in religion. The right course has become clear from the wrong.",
+    "ref": "Quran 2:256",
+    "arabic": "لَا إِكْرَاهَ فِي الدِّينِ"
+  },
+  {
+    "text": "Repel evil by that which is better, and thereupon the one whom between you and him is enmity will become as though he was a devoted friend.",
+    "ref": "Quran 41:34",
+    "arabic": null
+  },
+  {
+    "text": "Say: He is Allah, the One.",
+    "ref": "Quran 112:1",
+    "arabic": "قُلْ هُوَ اللَّهُ أَحَدٌ"
+  },
+  {
+    "text": "Allah, the Eternal Refuge.",
+    "ref": "Quran 112:2",
+    "arabic": "اللَّهُ الصَّمَدُ"
+  },
+  {
+    "text": "In the name of Allah, the Most Gracious, the Most Merciful.",
+    "ref": "Quran 1:1",
+    "arabic": "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ"
+  },
+  {
+    "text": "All praise is due to Allah, Lord of all the worlds.",
+    "ref": "Quran 1:2",
+    "arabic": "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ"
+  },
+  {
+    "text": "It is You we worship and You we ask for help.",
+    "ref": "Quran 1:5",
+    "arabic": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ"
+  },
+  {
+    "text": "Guide us to the straight path.",
+    "ref": "Quran 1:6",
+    "arabic": "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ"
+  },
+  {
+    "text": "This is the Book about which there is no doubt, a guidance for those conscious of Allah.",
+    "ref": "Quran 2:2",
+    "arabic": "ذَٰلِكَ الْكِتَابُ لَا رَيْبَ فِيهِ هُدًى لِّلْمُتَّقِينَ"
+  },
+  {
+    "text": "And seek help through patience and prayer.",
+    "ref": "Quran 2:45",
+    "arabic": "وَاسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ"
+  },
+  {
+    "text": "Our Lord, give us in this world that which is good and in the Hereafter that which is good, and protect us from the punishment of the Fire.",
+    "ref": "Quran 2:201",
+    "arabic": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ"
+  },
+  {
+    "text": "Allah — there is no deity except Him, the Ever-Living, the Sustainer of all existence.",
+    "ref": "Quran 2:255",
+    "arabic": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ"
+  },
+  {
+    "text": "To Allah belongs whatever is in the heavens and whatever is in the earth.",
+    "ref": "Quran 2:284",
+    "arabic": "لِّلَّهِ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ"
+  },
+  {
+    "text": "Our Lord, do not impose blame upon us if we have forgotten or erred.",
+    "ref": "Quran 2:286",
+    "arabic": "رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا"
+  },
+  {
+    "text": "He it is who forms you in the wombs however He wills.",
+    "ref": "Quran 3:6",
+    "arabic": "هُوَ الَّذِي يُصَوِّرُكُمْ فِي الْأَرْحَامِ كَيْفَ يَشَاءُ"
+  },
+  {
+    "text": "Our Lord, let not our hearts deviate after You have guided us.",
+    "ref": "Quran 3:8",
+    "arabic": "رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا"
+  },
+  {
+    "text": "You are the best nation produced for mankind. You enjoin what is right and forbid what is wrong and believe in Allah.",
+    "ref": "Quran 3:110",
+    "arabic": null
+  },
+  {
+    "text": "And let there be among you a group inviting to good, enjoining what is right and forbidding what is wrong.",
+    "ref": "Quran 3:104",
+    "arabic": null
+  },
+  {
+    "text": "And hasten to forgiveness from your Lord and a garden as wide as the heavens and earth, prepared for the righteous.",
+    "ref": "Quran 3:133",
+    "arabic": null
+  },
+  {
+    "text": "Those who spend in the cause of Allah during ease and hardship and who restrain anger and who pardon the people — and Allah loves the doers of good.",
+    "ref": "Quran 3:134",
+    "arabic": null
+  },
+  {
+    "text": "Do not weaken and do not grieve, for you will be superior if you are true believers.",
+    "ref": "Quran 3:139",
+    "arabic": "وَلَا تَهِنُوا وَلَا تَحْزَنُوا وَأَنتُمُ الْأَعْلَوْنَ إِن كُنتُم مُّؤْمِنِينَ"
+  },
+  {
+    "text": "And We have sent you, O Muhammad, not except as a mercy to the worlds.",
+    "ref": "Quran 21:107",
+    "arabic": "وَمَا أَرْسَلْنَاكَ إِلَّا رَحْمَةً لِّلْعَالَمِينَ"
+  },
+  {
+    "text": "Indeed, those who have said 'Our Lord is Allah' and then remained on a right course — the angels will descend upon them.",
+    "ref": "Quran 41:30",
+    "arabic": null
+  },
+  {
+    "text": "And cooperate in righteousness and piety, but do not cooperate in sin and aggression.",
+    "ref": "Quran 5:2",
+    "arabic": "وَتَعَاوَنُوا عَلَى الْبِرِّ وَالتَّقْوَىٰ وَلَا تَعَاوَنُوا عَلَى الْإِثْمِ وَالْعُدْوَانِ"
+  },
+  {
+    "text": "O you who have believed, be persistently standing firm in justice, witnesses for Allah, even if it be against yourselves.",
+    "ref": "Quran 4:135",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, Allah commands you to render trusts to whom they are due and when you judge between people to judge with justice.",
+    "ref": "Quran 4:58",
+    "arabic": null
+  },
+  {
+    "text": "And worship Allah and associate nothing with Him, and to parents do good, and to relatives, orphans, the needy, the near neighbor, the neighbor farther away.",
+    "ref": "Quran 4:36",
+    "arabic": null
+  },
+  {
+    "text": "Wherever you may be, death will overtake you, even if you should be within towers of lofty construction.",
+    "ref": "Quran 4:78",
+    "arabic": null
+  },
+  {
+    "text": "And whoever does a wrong or wrongs himself but then seeks forgiveness of Allah will find Allah Forgiving and Merciful.",
+    "ref": "Quran 4:110",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, be patient and endure and remain stationed and fear Allah that you may be successful.",
+    "ref": "Quran 3:200",
+    "arabic": null
+  },
+  {
+    "text": "This day I have perfected for you your religion and completed My favor upon you and have approved for you Islam as religion.",
+    "ref": "Quran 5:3",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, fulfill all contracts.",
+    "ref": "Quran 5:1",
+    "arabic": "يَا أَيُّهَا الَّذِينَ آمَنُوا أَوْفُوا بِالْعُقُودِ"
+  },
+  {
+    "text": "And eat and drink, but be not excessive. Indeed, He likes not those who commit excess.",
+    "ref": "Quran 7:31",
+    "arabic": "وَكُلُوا وَاشْرَبُوا وَلَا تُسْرِفُوا"
+  },
+  {
+    "text": "Indeed, your Lord is Allah, who created the heavens and earth in six days and then established Himself above the Throne.",
+    "ref": "Quran 7:54",
+    "arabic": null
+  },
+  {
+    "text": "Call upon your Lord in humility and privately; indeed, He does not like transgressors.",
+    "ref": "Quran 7:55",
+    "arabic": "ادْعُوا رَبَّكُمْ تَضَرُّعًا وَخُفْيَةً"
+  },
+  {
+    "text": "And do not cause corruption upon the earth after its reformation.",
+    "ref": "Quran 7:56",
+    "arabic": "وَلَا تُفْسِدُوا فِي الْأَرْضِ بَعْدَ إِصْلَاحِهَا"
+  },
+  {
+    "text": "And it is He who sends the winds as good tidings before His mercy.",
+    "ref": "Quran 7:57",
+    "arabic": "وَهُوَ الَّذِي يُرْسِلُ الرِّيَاحَ بُشْرًا بَيْنَ يَدَيْ رَحْمَتِهِ"
+  },
+  {
+    "text": "If Allah should aid you, no one can overcome you; but if He should forsake you, who is there that can aid you after Him?",
+    "ref": "Quran 3:160",
+    "arabic": null
+  },
+  {
+    "text": "And to Allah belong the best names, so invoke Him by them.",
+    "ref": "Quran 7:180",
+    "arabic": "وَلِلَّهِ الْأَسْمَاءُ الْحُسْنَىٰ فَادْعُوهُ بِهَا"
+  },
+  {
+    "text": "They plan, and Allah plans. And Allah is the best of planners.",
+    "ref": "Quran 8:30",
+    "arabic": "وَيَمْكُرُونَ وَيَمْكُرُ اللَّهُ وَاللَّهُ خَيْرُ الْمَاكِرِينَ"
+  },
+  {
+    "text": "And know that your properties and your children are but a trial and that Allah has with Him a great reward.",
+    "ref": "Quran 8:28",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, if you fear Allah, He will grant you a criterion and will remove from you your misdeeds and forgive you.",
+    "ref": "Quran 8:29",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, Allah will not change the condition of a people until they change what is in themselves.",
+    "ref": "Quran 13:11",
+    "arabic": "إِنَّ اللَّهَ لَا يُغَيِّرُ مَا بِقَوْمٍ حَتَّىٰ يُغَيِّرُوا مَا بِأَنفُسِهِمْ"
+  },
+  {
+    "text": "For them are good tidings in the worldly life and in the Hereafter. No change is there in the words of Allah.",
+    "ref": "Quran 10:64",
+    "arabic": null
+  },
+  {
+    "text": "And not upon the Messenger is except the clear notification.",
+    "ref": "Quran 24:54",
+    "arabic": null
+  },
+  {
+    "text": "And if you should count the favors of Allah, you could not enumerate them. Indeed, Allah is Forgiving and Merciful.",
+    "ref": "Quran 16:18",
+    "arabic": "وَإِن تَعُدُّوا نِعْمَةَ اللَّهِ لَا تُحْصُوهَا"
+  },
+  {
+    "text": "Indeed, Allah orders justice and good conduct and giving to relatives and forbids immorality and bad conduct and oppression.",
+    "ref": "Quran 16:90",
+    "arabic": null
+  },
+  {
+    "text": "Invite to the way of your Lord with wisdom and good instruction, and argue with them in a way that is best.",
+    "ref": "Quran 16:125",
+    "arabic": "ادْعُ إِلَىٰ سَبِيلِ رَبِّكَ بِالْحِكْمَةِ وَالْمَوْعِظَةِ الْحَسَنَةِ"
+  },
+  {
+    "text": "And your Lord has decreed that you not worship except Him, and to parents, good treatment.",
+    "ref": "Quran 17:23",
+    "arabic": "وَقَضَىٰ رَبُّكَ أَلَّا تَعْبُدُوا إِلَّا إِيَّاهُ وَبِالْوَالِدَيْنِ إِحْسَانًا"
+  },
+  {
+    "text": "And lower to them the wing of humility out of mercy and say: My Lord, have mercy upon them as they brought me up when I was small.",
+    "ref": "Quran 17:24",
+    "arabic": null
+  },
+  {
+    "text": "And give the relative his right, and the poor and the traveler, and do not spend wastefully.",
+    "ref": "Quran 17:26",
+    "arabic": null
+  },
+  {
+    "text": "And do not kill your children for fear of poverty. We provide for them and for you.",
+    "ref": "Quran 17:31",
+    "arabic": null
+  },
+  {
+    "text": "And do not approach unlawful sexual intercourse. Indeed, it is ever an immorality and is evil as a way.",
+    "ref": "Quran 17:32",
+    "arabic": null
+  },
+  {
+    "text": "And do not walk upon the earth exultantly. Indeed, you will never tear the earth apart, and you will never reach the mountains in height.",
+    "ref": "Quran 17:37",
+    "arabic": null
+  },
+  {
+    "text": "Say: If the sea were ink for the words of my Lord, the sea would be exhausted before the words of my Lord were exhausted.",
+    "ref": "Quran 18:109",
+    "arabic": null
+  },
+  {
+    "text": "Wealth and children are the adornment of the life of this world. But the enduring good deeds are better to your Lord for reward.",
+    "ref": "Quran 18:46",
+    "arabic": null
+  },
+  {
+    "text": "So whoever would hope for the meeting with his Lord — let him do righteous work and not associate in the worship of his Lord anyone.",
+    "ref": "Quran 18:110",
+    "arabic": null
+  },
+  {
+    "text": "And We have not sent you except as a giver of good tidings and a warner.",
+    "ref": "Quran 25:56",
+    "arabic": "وَمَا أَرْسَلْنَاكَ إِلَّا مُبَشِّرًا وَنَذِيرًا"
+  },
+  {
+    "text": "Blessed is He who has placed in the sky great stars and placed therein a burning lamp and luminous moon.",
+    "ref": "Quran 25:61",
+    "arabic": null
+  },
+  {
+    "text": "And those who, when they spend, do so not excessively or sparingly but are ever, between that, justly moderate.",
+    "ref": "Quran 25:67",
+    "arabic": null
+  },
+  {
+    "text": "And those who do not testify to falsehood, and when they pass near ill speech, they pass by with dignity.",
+    "ref": "Quran 25:72",
+    "arabic": null
+  },
+  {
+    "text": "And those who say: Our Lord, grant us from among our wives and offspring comfort to our eyes and make us an example for the righteous.",
+    "ref": "Quran 25:74",
+    "arabic": "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ"
+  },
+  {
+    "text": "Is not He who created the heavens and the earth Able to create the likes of them? Yes, and He is the Knowing Creator.",
+    "ref": "Quran 36:81",
+    "arabic": null
+  },
+  {
+    "text": "His command is only when He intends a thing that He says to it: Be, and it is.",
+    "ref": "Quran 36:82",
+    "arabic": "إِنَّمَا أَمْرُهُ إِذَا أَرَادَ شَيْئًا أَن يَقُولَ لَهُ كُن فَيَكُونُ"
+  },
+  {
+    "text": "Glory be to Him in whose hand is the dominion of all things, and to Him you will be returned.",
+    "ref": "Quran 36:83",
+    "arabic": "فَسُبْحَانَ الَّذِي بِيَدِهِ مَلَكُوتُ كُلِّ شَيْءٍ وَإِلَيْهِ تُرْجَعُونَ"
+  },
+  {
+    "text": "O you who have believed, avoid much negative assumption. Indeed, some assumption is sin.",
+    "ref": "Quran 49:12",
+    "arabic": null
+  },
+  {
+    "text": "And do not spy or backbite each other.",
+    "ref": "Quran 49:12",
+    "arabic": "وَلَا تَجَسَّسُوا وَلَا يَغْتَب بَّعْضُكُم بَعْضًا"
+  },
+  {
+    "text": "O mankind, fear your Lord, who created you from one soul and created from it its mate.",
+    "ref": "Quran 4:1",
+    "arabic": null
+  },
+  {
+    "text": "And the heaven He raised and imposed the balance.",
+    "ref": "Quran 55:7",
+    "arabic": "وَالسَّمَاءَ رَفَعَهَا وَوَضَعَ الْمِيزَانَ"
+  },
+  {
+    "text": "That you not transgress within the balance.",
+    "ref": "Quran 55:8",
+    "arabic": "أَلَّا تَطْغَوْا فِي الْمِيزَانِ"
+  },
+  {
+    "text": "The Most Merciful taught the Quran.",
+    "ref": "Quran 55:1-2",
+    "arabic": "الرَّحْمَنُ عَلَّمَ الْقُرْآنَ"
+  },
+  {
+    "text": "He created man and taught him eloquence.",
+    "ref": "Quran 55:3-4",
+    "arabic": "خَلَقَ الْإِنسَانَ عَلَّمَهُ الْبَيَانَ"
+  },
+  {
+    "text": "Is the reward for good anything but good?",
+    "ref": "Quran 55:60",
+    "arabic": "هَلْ جَزَاءُ الْإِحْسَانِ إِلَّا الْإِحْسَانُ"
+  },
+  {
+    "text": "Whatever is in the heavens and earth exalts Allah, and He is the Exalted in Might, the Wise.",
+    "ref": "Quran 57:1",
+    "arabic": null
+  },
+  {
+    "text": "He is the First and the Last, the Ascendant and the Intimate, and He is of all things Knowing.",
+    "ref": "Quran 57:3",
+    "arabic": "هُوَ الْأَوَّلُ وَالْآخِرُ وَالظَّاهِرُ وَالْبَاطِنُ وَهُوَ بِكُلِّ شَيْءٍ عَلِيمٌ"
+  },
+  {
+    "text": "Know that the life of this world is but amusement and diversion and adornment and boasting to one another.",
+    "ref": "Quran 57:20",
+    "arabic": null
+  },
+  {
+    "text": "No disaster strikes upon the earth or among yourselves except that it is in a register before We bring it into being.",
+    "ref": "Quran 57:22",
+    "arabic": null
+  },
+  {
+    "text": "In order that you not despair over what has eluded you and not exult over what He has given you.",
+    "ref": "Quran 57:23",
+    "arabic": null
+  },
+  {
+    "text": "Fear Allah. And let every soul look to what it has put forth for tomorrow.",
+    "ref": "Quran 59:18",
+    "arabic": "اتَّقُوا اللَّهَ وَلْتَنظُرْ نَفْسٌ مَّا قَدَّمَتْ لِغَدٍ"
+  },
+  {
+    "text": "He is Allah, the Creator, the Inventor, the Fashioner; to Him belong the best names.",
+    "ref": "Quran 59:24",
+    "arabic": "هُوَ اللَّهُ الْخَالِقُ الْبَارِئُ الْمُصَوِّرُ لَهُ الْأَسْمَاءُ الْحُسْنَىٰ"
+  },
+  {
+    "text": "He is Allah, other than whom there is no deity, the Sovereign, the Pure, the Perfection, the Bestower of Faith, the Overseer, the Exalted in Might, the Compeller, the Superior.",
+    "ref": "Quran 59:23",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, why do you say what you do not do? Great is hatred in the sight of Allah that you say what you do not do.",
+    "ref": "Quran 61:2-3",
+    "arabic": null
+  },
+  {
+    "text": "When the victory of Allah has come and the conquest, and you see the people entering into the religion of Allah in multitudes, then exalt Him with praise of your Lord and ask forgiveness of Him.",
+    "ref": "Quran 110:1-3",
+    "arabic": null
+  },
+  {
+    "text": "Say: I seek refuge in the Lord of daybreak.",
+    "ref": "Quran 113:1",
+    "arabic": "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ"
+  },
+  {
+    "text": "Say: I seek refuge in the Lord of mankind.",
+    "ref": "Quran 114:1",
+    "arabic": "قُلْ أَعُوذُ بِرَبِّ النَّاسِ"
+  },
+  {
+    "text": "Perish the two hands of Abu Lahab, and perish he.",
+    "ref": "Quran 111:1",
+    "arabic": "تَبَّتْ يَدَا أَبِي لَهَبٍ وَتَبَّ"
+  },
+  {
+    "text": "Indeed, We have granted you al-Kawthar.",
+    "ref": "Quran 108:1",
+    "arabic": "إِنَّا أَعْطَيْنَاكَ الْكَوْثَرَ"
+  },
+  {
+    "text": "So pray to your Lord and sacrifice.",
+    "ref": "Quran 108:2",
+    "arabic": "فَصَلِّ لِرَبِّكَ وَانْحَرْ"
+  },
+  {
+    "text": "Have you seen the one who denies the Recompense? For that is the one who drives away the orphan.",
+    "ref": "Quran 107:1-2",
+    "arabic": null
+  },
+  {
+    "text": "And does not encourage the feeding of the poor.",
+    "ref": "Quran 107:3",
+    "arabic": "وَلَا يَحُضُّ عَلَىٰ طَعَامِ الْمِسْكِينِ"
+  },
+  {
+    "text": "For the accustomed security of the Quraysh — their accustomed security in the journey of winter and summer.",
+    "ref": "Quran 106:1-2",
+    "arabic": null
+  },
+  {
+    "text": "Let them worship the Lord of this House, who has fed them against hunger and made them safe from fear.",
+    "ref": "Quran 106:3-4",
+    "arabic": null
+  },
+  {
+    "text": "By time, indeed mankind is in loss, except for those who have believed and done righteous deeds and advised each other to truth and advised each other to patience.",
+    "ref": "Quran 103:1-3",
+    "arabic": "وَالْعَصْرِ إِنَّ الْإِنسَانَ لَفِي خُسْرٍ"
+  },
+  {
+    "text": "Competition in worldly increase diverts you until you visit the graveyards.",
+    "ref": "Quran 102:1-2",
+    "arabic": "أَلْهَاكُمُ التَّكَاثُرُ حَتَّىٰ زُرْتُمُ الْمَقَابِرَ"
+  },
+  {
+    "text": "The striking calamity — what is the striking calamity? And what can make you know what is the striking calamity?",
+    "ref": "Quran 101:1-3",
+    "arabic": null
+  },
+  {
+    "text": "When the earth is shaken with its final earthquake.",
+    "ref": "Quran 99:1",
+    "arabic": "إِذَا زُلْزِلَتِ الْأَرْضُ زِلْزَالَهَا"
+  },
+  {
+    "text": "So whoever does an atom's weight of good will see it. And whoever does an atom's weight of evil will see it.",
+    "ref": "Quran 99:7-8",
+    "arabic": "فَمَن يَعْمَلْ مِثْقَالَ ذَرَّةٍ خَيْرًا يَرَهُ"
+  },
+  {
+    "text": "Indeed, We sent it down during the Night of Decree. And what can make you know what is the Night of Decree? The Night of Decree is better than a thousand months.",
+    "ref": "Quran 97:1-3",
+    "arabic": null
+  },
+  {
+    "text": "Created man from a clinging substance.",
+    "ref": "Quran 96:2",
+    "arabic": "خَلَقَ الْإِنسَانَ مِنْ عَلَقٍ"
+  },
+  {
+    "text": "Read, and your Lord is the Most Generous, who taught by the pen.",
+    "ref": "Quran 96:3-4",
+    "arabic": "اقْرَأْ وَرَبُّكَ الْأَكْرَمُ الَّذِي عَلَّمَ بِالْقَلَمِ"
+  },
+  {
+    "text": "By the fig and the olive, and by Mount Sinai, and by this secure city.",
+    "ref": "Quran 95:1-3",
+    "arabic": "وَالتِّينِ وَالزَّيْتُونِ وَطُورِ سِينِينَ"
+  },
+  {
+    "text": "Have We not expanded for you your breast? And We removed from you your burden.",
+    "ref": "Quran 94:1-2",
+    "arabic": "أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ وَوَضَعْنَا عَنكَ وِزْرَكَ"
+  },
+  {
+    "text": "By the morning brightness and by the night when it covers with darkness, your Lord has not taken leave of you nor has He detested you.",
+    "ref": "Quran 93:1-3",
+    "arabic": null
+  },
+  {
+    "text": "And the Hereafter is better for you than the first life.",
+    "ref": "Quran 93:4",
+    "arabic": "وَلَلْآخِرَةُ خَيْرٌ لَّكَ مِنَ الْأُولَىٰ"
+  },
+  {
+    "text": "And your Lord is going to give you, and you will be satisfied.",
+    "ref": "Quran 93:5",
+    "arabic": "وَلَسَوْفَ يُعْطِيكَ رَبُّكَ فَتَرْضَىٰ"
+  },
+  {
+    "text": "Did He not find you an orphan and give you refuge?",
+    "ref": "Quran 93:6",
+    "arabic": "أَلَمْ يَجِدْكَ يَتِيمًا فَآوَىٰ"
+  },
+  {
+    "text": "And as for the favor of your Lord, report it.",
+    "ref": "Quran 93:11",
+    "arabic": "وَأَمَّا بِنِعْمَةِ رَبِّكَ فَحَدِّثْ"
+  },
+  {
+    "text": "By the sun and its brightness and by the moon when it follows it.",
+    "ref": "Quran 91:1-2",
+    "arabic": "وَالشَّمْسِ وَضُحَاهَا وَالْقَمَرِ إِذَا تَلَاهَا"
+  },
+  {
+    "text": "He has succeeded who purifies it, and he has failed who instills it with corruption.",
+    "ref": "Quran 91:9-10",
+    "arabic": "قَدْ أَفْلَحَ مَن زَكَّاهَا وَقَدْ خَابَ مَن دَسَّاهَا"
+  },
+  {
+    "text": "I do not swear by this city — and you are free of restriction in this city.",
+    "ref": "Quran 90:1-2",
+    "arabic": null
+  },
+  {
+    "text": "Have We not made for him two eyes? And a tongue and two lips? And have shown him the two ways?",
+    "ref": "Quran 90:8-10",
+    "arabic": null
+  },
+  {
+    "text": "It is the freeing of a slave, or feeding on a day of severe hunger an orphan of near relationship or a needy person in misery.",
+    "ref": "Quran 90:13-16",
+    "arabic": null
+  },
+  {
+    "text": "Then being among those who believed and advised one another to patience and advised one another to compassion.",
+    "ref": "Quran 90:17",
+    "arabic": null
+  },
+  {
+    "text": "By the dawn and by the ten nights.",
+    "ref": "Quran 89:1-2",
+    "arabic": "وَالْفَجْرِ وَلَيَالٍ عَشْرٍ"
+  },
+  {
+    "text": "O reassured soul, return to your Lord, well-pleased and pleasing to Him.",
+    "ref": "Quran 89:27-28",
+    "arabic": "يَا أَيَّتُهَا النَّفْسُ الْمُطْمَئِنَّةُ ارْجِعِي إِلَىٰ رَبِّكِ رَاضِيَةً مَّرْضِيَّةً"
+  },
+  {
+    "text": "And enter among My righteous servants. And enter My Paradise.",
+    "ref": "Quran 89:29-30",
+    "arabic": "فَادْخُلِي فِي عِبَادِي وَادْخُلِي جَنَّتِي"
+  },
+  {
+    "text": "No! But you do not honor the orphan. And you do not encourage one another to feed the poor.",
+    "ref": "Quran 89:17-18",
+    "arabic": null
+  },
+  {
+    "text": "Glorify the name of your Lord, the Most High, who created and proportioned.",
+    "ref": "Quran 87:1-2",
+    "arabic": "سَبِّحِ اسْمَ رَبِّكَ الْأَعْلَى الَّذِي خَلَقَ فَسَوَّىٰ"
+  },
+  {
+    "text": "Indeed, this is in the former scriptures, the scriptures of Abraham and Moses.",
+    "ref": "Quran 87:18-19",
+    "arabic": "إِنَّ هَٰذَا لَفِي الصُّحُفِ الْأُولَىٰ صُحُفِ إِبْرَاهِيمَ وَمُوسَىٰ"
+  },
+  {
+    "text": "So let man observe from what he was created. He was created from a fluid ejected.",
+    "ref": "Quran 86:5-6",
+    "arabic": null
+  },
+  {
+    "text": "By the sky containing great stars.",
+    "ref": "Quran 85:1",
+    "arabic": "وَالسَّمَاءِ ذَاتِ الْبُرُوجِ"
+  },
+  {
+    "text": "Indeed, those who have believed and done righteous deeds will have gardens beneath which rivers flow. That is the great attainment.",
+    "ref": "Quran 85:11",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, the strike of your Lord is severe.",
+    "ref": "Quran 85:12",
+    "arabic": "إِنَّ بَطْشَ رَبِّكَ لَشَدِيدٌ"
+  },
+  {
+    "text": "Indeed, it is He who originates and repeats.",
+    "ref": "Quran 85:13",
+    "arabic": "إِنَّهُ هُوَ يُبْدِئُ وَيُعِيدُ"
+  },
+  {
+    "text": "And He is the Forgiving, the Affectionate.",
+    "ref": "Quran 85:14",
+    "arabic": "وَهُوَ الْغَفُورُ الْوَدُودُ"
+  },
+  {
+    "text": "O mankind, what has deceived you concerning your Lord, the Generous?",
+    "ref": "Quran 82:6",
+    "arabic": "يَا أَيُّهَا الْإِنسَانُ مَا غَرَّكَ بِرَبِّكَ الْكَرِيمِ"
+  },
+  {
+    "text": "When the sun is wrapped up and when the stars fall, dispersing.",
+    "ref": "Quran 81:1-2",
+    "arabic": "إِذَا الشَّمْسُ كُوِّرَتْ وَإِذَا النُّجُومُ انكَدَرَتْ"
+  },
+  {
+    "text": "He frowned and turned away because there came to him the blind man.",
+    "ref": "Quran 80:1-2",
+    "arabic": "عَبَسَ وَتَوَلَّىٰ أَن جَاءَهُ الْأَعْمَىٰ"
+  },
+  {
+    "text": "Then let mankind look at his food — how We poured down water in torrents, then We broke open the earth, splitting it, and caused to grow within it grain.",
+    "ref": "Quran 80:24-27",
+    "arabic": null
+  },
+  {
+    "text": "About what are they asking one another? About the great news.",
+    "ref": "Quran 78:1-2",
+    "arabic": "عَمَّ يَتَسَاءَلُونَ عَنِ النَّبَإِ الْعَظِيمِ"
+  },
+  {
+    "text": "Have We not made the earth a resting place? And the mountains as stakes?",
+    "ref": "Quran 78:6-7",
+    "arabic": "أَلَمْ نَجْعَلِ الْأَرْضَ مِهَادًا وَالْجِبَالَ أَوْتَادًا"
+  },
+  {
+    "text": "And made your sleep as rest.",
+    "ref": "Quran 78:9",
+    "arabic": "وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا"
+  },
+  {
+    "text": "Indeed, We have warned you of a near punishment — on the Day when a man will observe what his hands have put forth.",
+    "ref": "Quran 78:40",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, the righteous will be among gardens and springs.",
+    "ref": "Quran 15:45",
+    "arabic": "إِنَّ الْمُتَّقِينَ فِي جَنَّاتٍ وَعُيُونٍ"
+  },
+  {
+    "text": "And We did not create the heavens and earth and that between them in play.",
+    "ref": "Quran 21:16",
+    "arabic": "وَمَا خَلَقْنَا السَّمَاءَ وَالْأَرْضَ وَمَا بَيْنَهُمَا لَاعِبِينَ"
+  },
+  {
+    "text": "Every soul will taste death. And We test you with evil and with good as trial; and to Us you will be returned.",
+    "ref": "Quran 21:35",
+    "arabic": null
+  },
+  {
+    "text": "And We made from water every living thing. Then will they not believe?",
+    "ref": "Quran 21:30",
+    "arabic": "وَجَعَلْنَا مِنَ الْمَاءِ كُلَّ شَيْءٍ حَيٍّ أَفَلَا يُؤْمِنُونَ"
+  },
+  {
+    "text": "And We placed within the earth firmly set mountains, lest it should shift with them, and We made therein broad highways that they might be guided.",
+    "ref": "Quran 21:31",
+    "arabic": null
+  },
+  {
+    "text": "And We made the sky a protected ceiling, but they from its signs are turning away.",
+    "ref": "Quran 21:32",
+    "arabic": null
+  },
+  {
+    "text": "And remember Dhun-Nun, when he went off in anger and thought that We would not decree anything upon him. And he cried out from the darknesses: There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.",
+    "ref": "Quran 21:87",
+    "arabic": null
+  },
+  {
+    "text": "So We responded to him and saved him from the distress. And thus do We save the believers.",
+    "ref": "Quran 21:88",
+    "arabic": "فَاسْتَجَبْنَا لَهُ وَنَجَّيْنَاهُ مِنَ الْغَمِّ وَكَذَٰلِكَ نُنجِي الْمُؤْمِنِينَ"
+  },
+  {
+    "text": "And Ayyub, when he called to his Lord: Indeed, adversity has touched me, and You are the Most Merciful of the merciful.",
+    "ref": "Quran 21:83",
+    "arabic": "أَنِّي مَسَّنِيَ الضُّرُّ وَأَنتَ أَرْحَمُ الرَّاحِمِينَ"
+  },
+  {
+    "text": "My Lord, do not leave me alone, and You are the best of inheritors.",
+    "ref": "Quran 21:89",
+    "arabic": "رَبِّ لَا تَذَرْنِي فَرْدًا وَأَنتَ خَيْرُ الْوَارِثِينَ"
+  },
+  {
+    "text": "O you who have believed, bow and prostrate and worship your Lord and do good — that you may succeed.",
+    "ref": "Quran 22:77",
+    "arabic": null
+  },
+  {
+    "text": "And strive for Allah with the striving due to Him. He has chosen you.",
+    "ref": "Quran 22:78",
+    "arabic": "وَجَاهِدُوا فِي اللَّهِ حَقَّ جِهَادِهِ هُوَ اجْتَبَاكُمْ"
+  },
+  {
+    "text": "And for every nation We have appointed a rite that they may mention the name of Allah over what He has provided for them of sacrificial animals.",
+    "ref": "Quran 22:34",
+    "arabic": null
+  },
+  {
+    "text": "Their meat will not reach Allah, nor will their blood, but what reaches Him is piety from you.",
+    "ref": "Quran 22:37",
+    "arabic": null
+  },
+  {
+    "text": "Permission to fight has been given to those who are being fought, because they were wronged. And indeed, Allah is competent to give them victory.",
+    "ref": "Quran 22:39",
+    "arabic": null
+  },
+  {
+    "text": "And among people is he who worships Allah on an edge. If he is touched by good, he is reassured by it; but if he is struck by trial, he turns on his face.",
+    "ref": "Quran 22:11",
+    "arabic": null
+  },
+  {
+    "text": "Successful indeed are the believers who are humble in their prayers.",
+    "ref": "Quran 23:1-2",
+    "arabic": "قَدْ أَفْلَحَ الْمُؤْمِنُونَ الَّذِينَ هُمْ فِي صَلَاتِهِمْ خَاشِعُونَ"
+  },
+  {
+    "text": "And those who turn away from ill speech.",
+    "ref": "Quran 23:3",
+    "arabic": "وَالَّذِينَ هُمْ عَنِ اللَّغْوِ مُعْرِضُونَ"
+  },
+  {
+    "text": "And those who are to their trusts and their promises attentive.",
+    "ref": "Quran 23:8",
+    "arabic": "وَالَّذِينَ هُمْ لِأَمَانَاتِهِمْ وَعَهْدِهِمْ رَاعُونَ"
+  },
+  {
+    "text": "Did you think that We created you uselessly and that to Us you would not be returned?",
+    "ref": "Quran 23:115",
+    "arabic": "أَفَحَسِبْتُمْ أَنَّمَا خَلَقْنَاكُمْ عَبَثًا وَأَنَّكُمْ إِلَيْنَا لَا تُرْجَعُونَ"
+  },
+  {
+    "text": "And say: My Lord, forgive and have mercy, and You are the best of the merciful.",
+    "ref": "Quran 23:118",
+    "arabic": "وَقُل رَّبِّ اغْفِرْ وَارْحَمْ وَأَنتَ خَيْرُ الرَّاحِمِينَ"
+  },
+  {
+    "text": "Tell the believing men to reduce some of their vision and guard their private parts. That is purer for them.",
+    "ref": "Quran 24:30",
+    "arabic": null
+  },
+  {
+    "text": "And tell the believing women to reduce some of their vision and guard their private parts.",
+    "ref": "Quran 24:31",
+    "arabic": null
+  },
+  {
+    "text": "And marry the unmarried among you and the righteous among your male slaves and female slaves.",
+    "ref": "Quran 24:32",
+    "arabic": null
+  },
+  {
+    "text": "Allah has promised those who have believed among you and done righteous deeds that He will surely grant them succession upon the earth.",
+    "ref": "Quran 24:55",
+    "arabic": null
+  },
+  {
+    "text": "And when you are greeted with a greeting, greet with one better than it or return it.",
+    "ref": "Quran 4:86",
+    "arabic": "وَإِذَا حُيِّيتُم بِتَحِيَّةٍ فَحَيُّوا بِأَحْسَنَ مِنْهَا أَوْ رُدُّوهَا"
+  },
+  {
+    "text": "O you who have believed, enter into Islam completely and do not follow the footsteps of Satan.",
+    "ref": "Quran 2:208",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, do not consume one another's wealth unjustly but only in lawful business by mutual consent.",
+    "ref": "Quran 4:29",
+    "arabic": null
+  },
+  {
+    "text": "And do not wish for that by which Allah has made some of you exceed others.",
+    "ref": "Quran 4:32",
+    "arabic": null
+  },
+  {
+    "text": "And for all, We have made heirs to what is left by parents and relatives.",
+    "ref": "Quran 4:33",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, be persistently standing firm for Allah, witnesses in justice, and do not let the hatred of a people prevent you from being just. Be just; that is nearer to righteousness.",
+    "ref": "Quran 5:8",
+    "arabic": null
+  },
+  {
+    "text": "Upon you is your own self. Those who have gone astray will not harm you when you have been guided.",
+    "ref": "Quran 5:105",
+    "arabic": null
+  },
+  {
+    "text": "And with Him are the keys of the unseen; none knows them except Him. And He knows what is on the land and in the sea.",
+    "ref": "Quran 6:59",
+    "arabic": null
+  },
+  {
+    "text": "Not a leaf falls but that He knows it.",
+    "ref": "Quran 6:59",
+    "arabic": "وَمَا تَسْقُطُ مِن وَرَقَةٍ إِلَّا يَعْلَمُهَا"
+  },
+  {
+    "text": "And there is no creature on earth but that upon Allah is its provision, and He knows its place of dwelling and place of storage.",
+    "ref": "Quran 11:6",
+    "arabic": null
+  },
+  {
+    "text": "And to Thamud We sent their brother Salih. He said: O my people, worship Allah; you have no deity other than Him.",
+    "ref": "Quran 11:61",
+    "arabic": null
+  },
+  {
+    "text": "And to Midian We sent their brother Shu'ayb. He said: O my people, worship Allah; you have no deity other than Him.",
+    "ref": "Quran 11:84",
+    "arabic": null
+  },
+  {
+    "text": "And establish prayer at the two ends of the day and at the approach of the night. Indeed, good deeds do away with misdeeds.",
+    "ref": "Quran 11:114",
+    "arabic": null
+  },
+  {
+    "text": "We relate to you the best of stories in what We have revealed to you of this Quran.",
+    "ref": "Quran 12:3",
+    "arabic": "نَحْنُ نَقُصُّ عَلَيْكَ أَحْسَنَ الْقَصَصِ"
+  },
+  {
+    "text": "When Yusuf said to his father: O my father, indeed I have seen eleven stars and the sun and the moon; I saw them prostrating to me.",
+    "ref": "Quran 12:4",
+    "arabic": null
+  },
+  {
+    "text": "And she, in whose house he was, sought to seduce him. She closed the doors and said: Come, you. He said: I seek the refuge of Allah.",
+    "ref": "Quran 12:23",
+    "arabic": null
+  },
+  {
+    "text": "He said: I only complain of my suffering and my grief to Allah, and I know from Allah that which you do not know.",
+    "ref": "Quran 12:86",
+    "arabic": "إِنَّمَا أَشْكُو بَثِّي وَحُزْنِي إِلَى اللَّهِ"
+  },
+  {
+    "text": "Indeed, he who fears Allah and is patient, then indeed, Allah does not allow to be lost the reward of those who do good.",
+    "ref": "Quran 12:90",
+    "arabic": null
+  },
+  {
+    "text": "My Lord, You have given me something of sovereignty and taught me of the interpretation of dreams. Creator of the heavens and earth, You are my protector in this world and in the Hereafter.",
+    "ref": "Quran 12:101",
+    "arabic": null
+  },
+  {
+    "text": "In their stories there is a lesson for those of understanding.",
+    "ref": "Quran 12:111",
+    "arabic": "لَقَدْ كَانَ فِي قَصَصِهِمْ عِبْرَةٌ لِّأُولِي الْأَلْبَابِ"
+  },
+  {
+    "text": "Indeed, in the creation of the heavens and the earth and the alternation of the night and the day are signs for those of understanding.",
+    "ref": "Quran 3:190",
+    "arabic": null
+  },
+  {
+    "text": "Those who remember Allah while standing or sitting or lying on their sides and give thought to the creation of the heavens and the earth.",
+    "ref": "Quran 3:191",
+    "arabic": null
+  },
+  {
+    "text": "Our Lord, You did not create this aimlessly; exalted are You.",
+    "ref": "Quran 3:191",
+    "arabic": "رَبَّنَا مَا خَلَقْتَ هَٰذَا بَاطِلًا سُبْحَانَكَ"
+  },
+  {
+    "text": "Our Lord, indeed we have heard a caller calling to faith: Believe in your Lord, and we have believed.",
+    "ref": "Quran 3:193",
+    "arabic": null
+  },
+  {
+    "text": "Our Lord, and grant us what You promised us through Your messengers and do not disgrace us on the Day of Resurrection.",
+    "ref": "Quran 3:194",
+    "arabic": null
+  },
+  {
+    "text": "And their Lord responded to them: Never will I allow to be lost the work of any worker among you, whether male or female.",
+    "ref": "Quran 3:195",
+    "arabic": null
+  },
+  {
+    "text": "And Ibrahim, who fulfilled his obligations.",
+    "ref": "Quran 53:37",
+    "arabic": "وَإِبْرَاهِيمَ الَّذِي وَفَّىٰ"
+  },
+  {
+    "text": "That no bearer of burdens will bear the burden of another.",
+    "ref": "Quran 53:38",
+    "arabic": "أَلَّا تَزِرُ وَازِرَةٌ وِزْرَ أُخْرَىٰ"
+  },
+  {
+    "text": "And that there is not for man except that for which he strives.",
+    "ref": "Quran 53:39",
+    "arabic": "وَأَن لَّيْسَ لِلْإِنسَانِ إِلَّا مَا سَعَىٰ"
+  },
+  {
+    "text": "And that his effort is going to be seen.",
+    "ref": "Quran 53:40",
+    "arabic": "وَأَنَّ سَعْيَهُ سَوْفَ يُرَىٰ"
+  },
+  {
+    "text": "And when Ibrahim said: My Lord, make this city secure and keep me and my sons away from worshipping idols.",
+    "ref": "Quran 14:35",
+    "arabic": null
+  },
+  {
+    "text": "My Lord, make me an establisher of prayer, and from my descendants. Our Lord, and accept my supplication.",
+    "ref": "Quran 14:40",
+    "arabic": "رَبِّ اجْعَلْنِي مُقِيمَ الصَّلَاةِ وَمِن ذُرِّيَّتِي رَبَّنَا وَتَقَبَّلْ دُعَاءِ"
+  },
+  {
+    "text": "Our Lord, forgive me and my parents and the believers the Day the account is established.",
+    "ref": "Quran 14:41",
+    "arabic": "رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ"
+  },
+  {
+    "text": "And do not think Allah is unaware of what the wrongdoers do. He only delays them for a Day when eyes will stare in horror.",
+    "ref": "Quran 14:42",
+    "arabic": null
+  },
+  {
+    "text": "And We had certainly sent Nuh to his people, and he remained among them a thousand years minus fifty years.",
+    "ref": "Quran 29:14",
+    "arabic": null
+  },
+  {
+    "text": "And when Ibrahim said: My Lord, show me how You give life to the dead. Allah said: Have you not believed? He said: Yes, but I ask to be stronger in faith.",
+    "ref": "Quran 2:260",
+    "arabic": null
+  },
+  {
+    "text": "And We said: O fire, be coolness and safety upon Ibrahim.",
+    "ref": "Quran 21:69",
+    "arabic": "قُلْنَا يَا نَارُ كُونِي بَرْدًا وَسَلَامًا عَلَىٰ إِبْرَاهِيمَ"
+  },
+  {
+    "text": "And remember when your Lord said to the angels: Indeed, I will make upon the earth a successive authority.",
+    "ref": "Quran 2:30",
+    "arabic": null
+  },
+  {
+    "text": "And He taught Adam the names — all of them.",
+    "ref": "Quran 2:31",
+    "arabic": "وَعَلَّمَ آدَمَ الْأَسْمَاءَ كُلَّهَا"
+  },
+  {
+    "text": "O you who have believed, fasting is prescribed to you as it was prescribed to those before you, that you may become righteous.",
+    "ref": "Quran 2:183",
+    "arabic": null
+  },
+  {
+    "text": "The month of Ramadan in which was revealed the Quran, a guidance for the people and clear proofs of guidance and criterion.",
+    "ref": "Quran 2:185",
+    "arabic": null
+  },
+  {
+    "text": "So whoever sights the month, let him fast it.",
+    "ref": "Quran 2:185",
+    "arabic": "فَمَن شَهِدَ مِنكُمُ الشَّهْرَ فَلْيَصُمْهُ"
+  },
+  {
+    "text": "Allah intends for you ease and does not intend for you hardship.",
+    "ref": "Quran 2:185",
+    "arabic": "يُرِيدُ اللَّهُ بِكُمُ الْيُسْرَ وَلَا يُرِيدُ بِكُمُ الْعُسْرَ"
+  },
+  {
+    "text": "It has been made permissible for you the night preceding fasting to go to your wives.",
+    "ref": "Quran 2:187",
+    "arabic": null
+  },
+  {
+    "text": "And complete the Hajj and Umrah for Allah.",
+    "ref": "Quran 2:196",
+    "arabic": "وَأَتِمُّوا الْحَجَّ وَالْعُمْرَةَ لِلَّهِ"
+  },
+  {
+    "text": "Indeed, Safa and Marwah are among the symbols of Allah. So whoever makes Hajj to the House or performs Umrah — there is no blame upon him for walking between them.",
+    "ref": "Quran 2:158",
+    "arabic": null
+  },
+  {
+    "text": "And take provisions, but indeed, the best provision is fear of Allah.",
+    "ref": "Quran 2:197",
+    "arabic": "وَتَزَوَّدُوا فَإِنَّ خَيْرَ الزَّادِ التَّقْوَىٰ"
+  },
+  {
+    "text": "Hajj is in the well-known months, so whoever has made Hajj obligatory upon himself therein, there is no sexual relations and no disobedience and no disputing during Hajj.",
+    "ref": "Quran 2:197",
+    "arabic": null
+  },
+  {
+    "text": "And spend in the way of Allah and do not throw yourselves into destruction with your own hands.",
+    "ref": "Quran 2:195",
+    "arabic": null
+  },
+  {
+    "text": "Those who spend their wealth in the way of Allah and then do not follow up what they have spent with reminders of it or injury will have their reward.",
+    "ref": "Quran 2:262",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, do not invalidate your charities with reminders or injury.",
+    "ref": "Quran 2:264",
+    "arabic": null
+  },
+  {
+    "text": "Kind speech and forgiveness are better than charity followed by injury.",
+    "ref": "Quran 2:263",
+    "arabic": "قَوْلٌ مَّعْرُوفٌ وَمَغْفِرَةٌ خَيْرٌ مِّن صَدَقَةٍ يَتْبَعُهَا أَذًى"
+  },
+  {
+    "text": "Those who spend their wealth by night and by day, secretly and publicly — they will have their reward with their Lord.",
+    "ref": "Quran 2:274",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, fear Allah and give up what remains of interest, if you should be believers.",
+    "ref": "Quran 2:278",
+    "arabic": null
+  },
+  {
+    "text": "And if someone is in hardship, then let there be postponement until a time of ease. But if you give from your right as charity, then it is better for you.",
+    "ref": "Quran 2:280",
+    "arabic": null
+  },
+  {
+    "text": "The Messenger has believed in what was revealed to him from his Lord, and so have the believers.",
+    "ref": "Quran 2:285",
+    "arabic": null
+  },
+  {
+    "text": "We make no distinction between any of His messengers.",
+    "ref": "Quran 2:285",
+    "arabic": "لَا نُفَرِّقُ بَيْنَ أَحَدٍ مِّن رُّسُلِهِ"
+  },
+  {
+    "text": "And We gave Musa the Scripture and made it a guidance for the Children of Israel.",
+    "ref": "Quran 17:2",
+    "arabic": null
+  },
+  {
+    "text": "And when Musa said to his people: O my people, remember the favor of Allah upon you.",
+    "ref": "Quran 5:20",
+    "arabic": null
+  },
+  {
+    "text": "And We divided them into twelve descendant tribes as distinct nations. And We inspired to Musa when his people implored him for water: Strike with your staff the stone.",
+    "ref": "Quran 7:160",
+    "arabic": null
+  },
+  {
+    "text": "And We had inspired to the mother of Musa: Suckle him; but when you fear for him, cast him into the river and do not fear and do not grieve.",
+    "ref": "Quran 28:7",
+    "arabic": null
+  },
+  {
+    "text": "And Musa said: My Lord, expand for me my breast and ease for me my task and untie the knot from my tongue.",
+    "ref": "Quran 20:25-27",
+    "arabic": null
+  },
+  {
+    "text": "My Lord, I am in need of whatever good You would send down to me.",
+    "ref": "Quran 28:24",
+    "arabic": "رَبِّ إِنِّي لِمَا أَنزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ"
+  },
+  {
+    "text": "And when Isa, the son of Maryam, said: O Children of Israel, indeed I am the messenger of Allah to you.",
+    "ref": "Quran 61:6",
+    "arabic": null
+  },
+  {
+    "text": "When Allah said: O Isa, indeed I will take you and raise you to Myself and purify you from those who disbelieve.",
+    "ref": "Quran 3:55",
+    "arabic": null
+  },
+  {
+    "text": "The Masih, Isa the son of Maryam, was but a messenger of Allah and His word which He directed to Maryam and a soul from Him.",
+    "ref": "Quran 4:171",
+    "arabic": null
+  },
+  {
+    "text": "And mention in the Book, Maryam, when she withdrew from her family to a place toward the east.",
+    "ref": "Quran 19:16",
+    "arabic": null
+  },
+  {
+    "text": "He said: I am only the messenger of your Lord to give you a pure boy.",
+    "ref": "Quran 19:19",
+    "arabic": "قَالَ إِنَّمَا أَنَا رَسُولُ رَبِّكِ لِأَهَبَ لَكِ غُلَامًا زَكِيًّا"
+  },
+  {
+    "text": "And shake toward you the trunk of the palm tree; it will drop upon you ripe, fresh dates.",
+    "ref": "Quran 19:25",
+    "arabic": null
+  },
+  {
+    "text": "So eat and drink and be contented. And if you see from among humanity anyone, say: Indeed, I have vowed to the Most Merciful abstention.",
+    "ref": "Quran 19:26",
+    "arabic": null
+  },
+  {
+    "text": "Such is Isa, the son of Maryam — the word of truth about which they are in dispute.",
+    "ref": "Quran 19:34",
+    "arabic": "ذَٰلِكَ عِيسَى ابْنُ مَرْيَمَ قَوْلَ الْحَقِّ"
+  },
+  {
+    "text": "And mention in the Book, Ibrahim. Indeed, he was a man of truth and a prophet.",
+    "ref": "Quran 19:41",
+    "arabic": null
+  },
+  {
+    "text": "And mention in the Book, Isma'il. Indeed, he was true to his promise, and he was a messenger and a prophet.",
+    "ref": "Quran 19:54",
+    "arabic": null
+  },
+  {
+    "text": "And mention in the Book, Idris. Indeed, he was a man of truth and a prophet. And We raised him to a high station.",
+    "ref": "Quran 19:56-57",
+    "arabic": null
+  },
+  {
+    "text": "Those were the ones upon whom Allah bestowed favor from among the prophets of the descendants of Adam.",
+    "ref": "Quran 19:58",
+    "arabic": null
+  },
+  {
+    "text": "But there came after them successors who neglected prayer and pursued desires; so they are going to meet evil.",
+    "ref": "Quran 19:59",
+    "arabic": null
+  },
+  {
+    "text": "Except those who repent, believe, and do righteousness; for those will enter Paradise and will not be wronged at all.",
+    "ref": "Quran 19:60",
+    "arabic": null
+  },
+  {
+    "text": "Gardens of perpetual residence which the Most Merciful has promised His servants in the unseen.",
+    "ref": "Quran 19:61",
+    "arabic": null
+  },
+  {
+    "text": "And We have certainly created man and We know what his soul whispers to him.",
+    "ref": "Quran 50:16",
+    "arabic": "وَلَقَدْ خَلَقْنَا الْإِنسَانَ وَنَعْلَمُ مَا تُوَسْوِسُ بِهِ نَفْسُهُ"
+  },
+  {
+    "text": "The Day We will say to Hellfire: Have you been filled? And it will say: Are there some more?",
+    "ref": "Quran 50:30",
+    "arabic": null
+  },
+  {
+    "text": "And Paradise will be brought near to the righteous, not far.",
+    "ref": "Quran 50:31",
+    "arabic": "وَأُزْلِفَتِ الْجَنَّةُ لِلْمُتَّقِينَ غَيْرَ بَعِيدٍ"
+  },
+  {
+    "text": "And indeed, We have created the heavens and earth and what is between them in six days, and there touched Us no weariness.",
+    "ref": "Quran 50:38",
+    "arabic": null
+  },
+  {
+    "text": "So be patient over what they say and exalt with praise of your Lord before the rising of the sun and before its setting.",
+    "ref": "Quran 50:39",
+    "arabic": null
+  },
+  {
+    "text": "We are more knowing of what they say, and you are not over them a tyrant. But remind by the Quran whoever fears My threat.",
+    "ref": "Quran 50:45",
+    "arabic": null
+  },
+  {
+    "text": "And I did not create the jinn and mankind except to worship Me.",
+    "ref": "Quran 51:56",
+    "arabic": "وَمَا خَلَقْتُ الْجِنَّ وَالْإِنسَ إِلَّا لِيَعْبُدُونِ"
+  },
+  {
+    "text": "I do not want from them any provision, nor do I want them to feed Me.",
+    "ref": "Quran 51:57",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, Allah is the Provider, the Firm Possessor of Strength.",
+    "ref": "Quran 51:58",
+    "arabic": "إِنَّ اللَّهَ هُوَ الرَّزَّاقُ ذُو الْقُوَّةِ الْمَتِينُ"
+  },
+  {
+    "text": "And in yourselves. Then will you not see?",
+    "ref": "Quran 51:21",
+    "arabic": "وَفِي أَنفُسِكُمْ أَفَلَا تُبْصِرُونَ"
+  },
+  {
+    "text": "And in the heaven is your provision and whatever you are promised.",
+    "ref": "Quran 51:22",
+    "arabic": "وَفِي السَّمَاءِ رِزْقُكُمْ وَمَا تُوعَدُونَ"
+  },
+  {
+    "text": "Then by the Lord of the heaven and earth, indeed, it is truth — just as sure as it is that you are speaking.",
+    "ref": "Quran 51:23",
+    "arabic": null
+  },
+  {
+    "text": "Has there reached you the story of the honored guests of Ibrahim?",
+    "ref": "Quran 51:24",
+    "arabic": null
+  },
+  {
+    "text": "And the heaven We constructed with strength, and indeed, We are its expander.",
+    "ref": "Quran 51:47",
+    "arabic": "وَالسَّمَاءَ بَنَيْنَاهَا بِأَيْدٍ وَإِنَّا لَمُوسِعُونَ"
+  },
+  {
+    "text": "And the earth We have spread out, and excellent is the preparer.",
+    "ref": "Quran 51:48",
+    "arabic": "وَالْأَرْضَ فَرَشْنَاهَا فَنِعْمَ الْمَاهِدُونَ"
+  },
+  {
+    "text": "And of all things We created two mates; perhaps you will remember.",
+    "ref": "Quran 51:49",
+    "arabic": "وَمِن كُلِّ شَيْءٍ خَلَقْنَا زَوْجَيْنِ لَعَلَّكُمْ تَذَكَّرُونَ"
+  },
+  {
+    "text": "So flee to Allah. Indeed, I am to you from Him a clear warner.",
+    "ref": "Quran 51:50",
+    "arabic": "فَفِرُّوا إِلَى اللَّهِ إِنِّي لَكُم مِّنْهُ نَذِيرٌ مُّبِينٌ"
+  },
+  {
+    "text": "And the star when it descends, your companion has not strayed, nor has he erred.",
+    "ref": "Quran 53:1-2",
+    "arabic": "وَالنَّجْمِ إِذَا هَوَىٰ مَا ضَلَّ صَاحِبُكُمْ وَمَا غَوَىٰ"
+  },
+  {
+    "text": "Nor does he speak from his own inclination. It is not but a revelation revealed.",
+    "ref": "Quran 53:3-4",
+    "arabic": "وَمَا يَنطِقُ عَنِ الْهَوَىٰ إِنْ هُوَ إِلَّا وَحْيٌ يُوحَىٰ"
+  },
+  {
+    "text": "The Hour has come near, and the moon has split.",
+    "ref": "Quran 54:1",
+    "arabic": "اقْتَرَبَتِ السَّاعَةُ وَانشَقَّ الْقَمَرُ"
+  },
+  {
+    "text": "The Most Merciful, seated upon the Throne.",
+    "ref": "Quran 20:5",
+    "arabic": "الرَّحْمَنُ عَلَى الْعَرْشِ اسْتَوَىٰ"
+  },
+  {
+    "text": "To Him belongs what is in the heavens and what is on the earth and what is between them and what is under the soil.",
+    "ref": "Quran 20:6",
+    "arabic": null
+  },
+  {
+    "text": "And if you speak aloud — then indeed, He knows the secret and what is even more hidden.",
+    "ref": "Quran 20:7",
+    "arabic": null
+  },
+  {
+    "text": "Allah — there is no deity except Him. To Him belong the best names.",
+    "ref": "Quran 20:8",
+    "arabic": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ لَهُ الْأَسْمَاءُ الْحُسْنَىٰ"
+  },
+  {
+    "text": "Indeed, I am Allah. There is no deity except Me, so worship Me and establish prayer for My remembrance.",
+    "ref": "Quran 20:14",
+    "arabic": "إِنَّنِي أَنَا اللَّهُ لَا إِلَٰهَ إِلَّا أَنَا فَاعْبُدْنِي وَأَقِمِ الصَّلَاةَ لِذِكْرِي"
+  },
+  {
+    "text": "Indeed, the Hour is coming — I almost conceal it — so that every soul may be recompensed according to that for which it strives.",
+    "ref": "Quran 20:15",
+    "arabic": null
+  },
+  {
+    "text": "And be not in haste with the Quran before its revelation is completed to you, and say: My Lord, increase me in knowledge.",
+    "ref": "Quran 20:114",
+    "arabic": null
+  },
+  {
+    "text": "And whoever turns away from My remembrance — indeed, he will have a depressed life.",
+    "ref": "Quran 20:124",
+    "arabic": "وَمَنْ أَعْرَضَ عَن ذِكْرِي فَإِنَّ لَهُ مَعِيشَةً ضَنكًا"
+  },
+  {
+    "text": "We have not revealed the Quran to you that you be distressed.",
+    "ref": "Quran 20:2",
+    "arabic": "مَا أَنزَلْنَا عَلَيْكَ الْقُرْآنَ لِتَشْقَىٰ"
+  },
+  {
+    "text": "But only as a reminder for those who fear Allah.",
+    "ref": "Quran 20:3",
+    "arabic": "إِلَّا تَذْكِرَةً لِّمَن يَخْشَىٰ"
+  },
+  {
+    "text": "A revelation from He who created the earth and the highest heavens.",
+    "ref": "Quran 20:4",
+    "arabic": "تَنزِيلًا مِّمَّنْ خَلَقَ الْأَرْضَ وَالسَّمَاوَاتِ الْعُلَى"
+  },
+  {
+    "text": "We said: O Adam, indeed this is an enemy to you and to your wife. Then let him not remove you from Paradise so you would suffer.",
+    "ref": "Quran 20:117",
+    "arabic": null
+  },
+  {
+    "text": "Then Adam received from his Lord some words, and He accepted his repentance. Indeed, it is He who is the Accepting of repentance, the Merciful.",
+    "ref": "Quran 2:37",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, the patient will be given their reward without account.",
+    "ref": "Quran 39:10",
+    "arabic": "إِنَّمَا يُوَفَّى الصَّابِرُونَ أَجْرَهُم بِغَيْرِ حِسَابٍ"
+  },
+  {
+    "text": "Say: O My servants who have transgressed against themselves, do not despair of the mercy of Allah. Indeed, Allah forgives all sins.",
+    "ref": "Quran 39:53",
+    "arabic": null
+  },
+  {
+    "text": "And return to your Lord and submit to Him before the punishment comes upon you; then you will not be helped.",
+    "ref": "Quran 39:54",
+    "arabic": null
+  },
+  {
+    "text": "And follow the best of what was revealed to you from your Lord before the punishment comes upon you suddenly while you do not perceive.",
+    "ref": "Quran 39:55",
+    "arabic": null
+  },
+  {
+    "text": "Lest a soul should say: Oh, how great is my regret over what I neglected in regard to Allah.",
+    "ref": "Quran 39:56",
+    "arabic": null
+  },
+  {
+    "text": "Is one who is devoutly obedient during periods of the night, prostrating and standing, fearing the Hereafter and hoping for the mercy of his Lord, like one who does not?",
+    "ref": "Quran 39:9",
+    "arabic": null
+  },
+  {
+    "text": "Say: Are those who know equal to those who do not know?",
+    "ref": "Quran 39:9",
+    "arabic": "قُلْ هَلْ يَسْتَوِي الَّذِينَ يَعْلَمُونَ وَالَّذِينَ لَا يَعْلَمُونَ"
+  },
+  {
+    "text": "Allah takes the souls at the time of their death, and those that do not die, during their sleep.",
+    "ref": "Quran 39:42",
+    "arabic": null
+  },
+  {
+    "text": "And whatever of blessings and good things you have, it is from Allah.",
+    "ref": "Quran 16:53",
+    "arabic": "وَمَا بِكُم مِّن نِّعْمَةٍ فَمِنَ اللَّهِ"
+  },
+  {
+    "text": "And Allah has brought you out from the wombs of your mothers while you know nothing. And He gave you hearing, sight, and hearts that you might give thanks.",
+    "ref": "Quran 16:78",
+    "arabic": null
+  },
+  {
+    "text": "Do they not see the birds controlled in the atmosphere of the sky? None holds them up except Allah.",
+    "ref": "Quran 16:79",
+    "arabic": null
+  },
+  {
+    "text": "And Allah has made for you from your homes a place of rest and made for you from the hides of the animals tents.",
+    "ref": "Quran 16:80",
+    "arabic": null
+  },
+  {
+    "text": "And on the Day when We will resurrect from every nation a witness, then it will not be permitted to the disbelievers to make excuses.",
+    "ref": "Quran 16:84",
+    "arabic": null
+  },
+  {
+    "text": "And whoever emigrates for the cause of Allah will find on the earth many locations and abundance.",
+    "ref": "Quran 4:100",
+    "arabic": null
+  },
+  {
+    "text": "And if you punish, punish with an equivalent of that with which you were harmed. But if you are patient — it is better for those who are patient.",
+    "ref": "Quran 16:126",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, Allah is with those who fear Him and those who are doers of good.",
+    "ref": "Quran 16:128",
+    "arabic": "إِنَّ اللَّهَ مَعَ الَّذِينَ اتَّقَوا وَّالَّذِينَ هُم مُّحْسِنُونَ"
+  },
+  {
+    "text": "He sends down the angels, with the inspiration of His command, upon whom He wills of His servants: Warn that there is no deity except Me; so fear Me.",
+    "ref": "Quran 16:2",
+    "arabic": null
+  },
+  {
+    "text": "He created the heavens and earth in truth. High is He above what they associate with Him.",
+    "ref": "Quran 16:3",
+    "arabic": null
+  },
+  {
+    "text": "He created man from a sperm-drop; then at once, he is a clear adversary.",
+    "ref": "Quran 16:4",
+    "arabic": null
+  },
+  {
+    "text": "And the grazing livestock He has created for you; in them is warmth and numerous benefits, and from them you eat.",
+    "ref": "Quran 16:5",
+    "arabic": null
+  },
+  {
+    "text": "And He created the horse, the mule, and the donkey for you to ride and as adornment. And He creates that which you do not know.",
+    "ref": "Quran 16:8",
+    "arabic": null
+  },
+  {
+    "text": "It is He who sends down rain from the sky; from it is drink and from it is foliage in which you pasture animals.",
+    "ref": "Quran 16:10",
+    "arabic": null
+  },
+  {
+    "text": "He causes to grow for you thereby the crops, olives, palm trees, grapevines, and from all the fruits.",
+    "ref": "Quran 16:11",
+    "arabic": null
+  },
+  {
+    "text": "And He has subjected for you the night and day and the sun and moon, and the stars are subjected by His command.",
+    "ref": "Quran 16:12",
+    "arabic": null
+  },
+  {
+    "text": "And it is He who subjected the sea for you to eat from it tender meat and to extract from it ornaments which you wear.",
+    "ref": "Quran 16:14",
+    "arabic": null
+  },
+  {
+    "text": "And He has cast into the earth firmly set mountains, lest it shift with you, and made rivers and roads, that you may be guided.",
+    "ref": "Quran 16:15",
+    "arabic": null
+  },
+  {
+    "text": "And landmarks. And by the stars they are guided.",
+    "ref": "Quran 16:16",
+    "arabic": "وَعَلَامَاتٍ وَبِالنَّجْمِ هُمْ يَهْتَدُونَ"
+  },
+  {
+    "text": "Then is He who creates like one who does not create? So will you not be reminded?",
+    "ref": "Quran 16:17",
+    "arabic": null
+  },
+  {
+    "text": "And your Lord inspired to the bee: Take for yourself among the mountains, houses, and among the trees and in that which they construct.",
+    "ref": "Quran 16:68",
+    "arabic": null
+  },
+  {
+    "text": "There emerges from their bellies a drink, varying in colors, in which there is healing for people.",
+    "ref": "Quran 16:69",
+    "arabic": null
+  },
+  {
+    "text": "And whatever you have been given is but enjoyment of the worldly life. But what is with Allah is better and more lasting.",
+    "ref": "Quran 28:60",
+    "arabic": null
+  },
+  {
+    "text": "And do not turn your cheek in contempt toward people and do not walk through the earth exultantly.",
+    "ref": "Quran 31:18",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, the most disagreeable of sounds is the voice of donkeys.",
+    "ref": "Quran 31:19",
+    "arabic": "إِنَّ أَنكَرَ الْأَصْوَاتِ لَصَوْتُ الْحَمِيرِ"
+  },
+  {
+    "text": "And be moderate in your pace and lower your voice.",
+    "ref": "Quran 31:19",
+    "arabic": "وَاقْصِدْ فِي مَشْيِكَ وَاغْضُضْ مِن صَوْتِكَ"
+  },
+  {
+    "text": "And Luqman said to his son while he was instructing him: O my son, do not associate anything with Allah. Indeed, association with Him is great injustice.",
+    "ref": "Quran 31:13",
+    "arabic": null
+  },
+  {
+    "text": "O my son, establish prayer, enjoin what is right, forbid what is wrong, and be patient over what befalls you. Indeed, that is of the matters requiring determination.",
+    "ref": "Quran 31:17",
+    "arabic": null
+  },
+  {
+    "text": "And We have enjoined upon man to be good to his parents. His mother carried him with hardship and gave birth to him with hardship.",
+    "ref": "Quran 46:15",
+    "arabic": null
+  },
+  {
+    "text": "O my son, indeed if wrong should be the weight of a mustard seed and should be within a rock or in the heavens or in the earth, Allah will bring it forth.",
+    "ref": "Quran 31:16",
+    "arabic": null
+  },
+  {
+    "text": "And when it is said to them: Follow what Allah has revealed, they say: Rather, we will follow that which we found our fathers doing.",
+    "ref": "Quran 2:170",
+    "arabic": null
+  },
+  {
+    "text": "And do not mix the truth with falsehood or conceal the truth while you know it.",
+    "ref": "Quran 2:42",
+    "arabic": "وَلَا تَلْبِسُوا الْحَقَّ بِالْبَاطِلِ وَتَكْتُمُوا الْحَقَّ وَأَنتُمْ تَعْلَمُونَ"
+  },
+  {
+    "text": "O Children of Adam, take your adornment at every place of prayer.",
+    "ref": "Quran 7:31",
+    "arabic": "يَا بَنِي آدَمَ خُذُوا زِينَتَكُمْ عِندَ كُلِّ مَسْجِدٍ"
+  },
+  {
+    "text": "Say: Who has forbidden the adornment of Allah which He has produced for His servants and the good things of provision?",
+    "ref": "Quran 7:32",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, your Lord is quick in penalty; but indeed, He is Forgiving and Merciful.",
+    "ref": "Quran 7:167",
+    "arabic": "إِنَّ رَبَّكَ لَسَرِيعُ الْعِقَابِ وَإِنَّهُ لَغَفُورٌ رَّحِيمٌ"
+  },
+  {
+    "text": "Take what is given freely, enjoin what is good, and turn away from the ignorant.",
+    "ref": "Quran 7:199",
+    "arabic": "خُذِ الْعَفْوَ وَأْمُرْ بِالْعُرْفِ وَأَعْرِضْ عَنِ الْجَاهِلِينَ"
+  },
+  {
+    "text": "And when the Quran is recited, then listen to it and pay attention that you may receive mercy.",
+    "ref": "Quran 7:204",
+    "arabic": null
+  },
+  {
+    "text": "And remember your Lord within yourself in humility and in fear and without being apparent in speech — in the mornings and the evenings.",
+    "ref": "Quran 7:205",
+    "arabic": null
+  },
+  {
+    "text": "Indeed, those who are near your Lord are not prevented by arrogance from His worship, and they exalt Him and to Him they prostrate.",
+    "ref": "Quran 7:206",
+    "arabic": null
+  },
+  {
+    "text": "O you who have believed, respond to Allah and to the Messenger when he calls you to that which gives you life.",
+    "ref": "Quran 8:24",
+    "arabic": null
+  }
 ]
