@@ -11,7 +11,7 @@ class ProductFlagService {
   ProductFlagService({
     String? baseUrl,
     FirebaseAuth? auth,
-  })  : baseUrl = baseUrl ?? Config.apiBaseUrl,
+  })  : baseUrl = baseUrl ?? AppConfig.apiBaseUrl,
         _auth = auth ?? FirebaseAuth.instance;
 
   Future<String> _idToken() async {

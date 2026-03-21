@@ -52,7 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 3));
       _userName = doc.data()?['name'] ?? '';
     } catch (_) {
       _userName = user.displayName ?? '';
@@ -609,39 +610,25 @@ class _PrayerNotificationSettings extends StatefulWidget {
 class _PrayerNotificationSettingsState
     extends State<_PrayerNotificationSettings> {
   final _service = PrayerNotificationService.instance;
-  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _service.addListener(_onUpdate);
   }
 
-  Future<void> _load() async {
-    await _service.load();
-    if (mounted) setState(() => _loading = false);
+  @override
+  void dispose() {
+    _service.removeListener(_onUpdate);
+    super.dispose();
+  }
+
+  void _onUpdate() {
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider, width: 0.5),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

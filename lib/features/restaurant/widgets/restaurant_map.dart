@@ -81,8 +81,11 @@ class _RestaurantMapState extends State<RestaurantMap> {
             zoomControlsEnabled: kIsWeb, // show +/- buttons on web for easier zoom
             tiltGesturesEnabled: false,
             rotateGesturesEnabled: !kIsWeb, // disable rotation on web (confusing with mouse)
-            zoomGesturesEnabled: true,
-            scrollGesturesEnabled: true,
+            // On web, disable scroll-based zoom/pan to prevent the map from
+            // intercepting scroll events meant for the results list overlay.
+            // Users can still zoom via +/- buttons shown on web.
+            zoomGesturesEnabled: !kIsWeb,
+            scrollGesturesEnabled: !kIsWeb,
             mapType: widget.mapType,
             padding: widget.padding,
             style: UmmalyMapStyles.light,

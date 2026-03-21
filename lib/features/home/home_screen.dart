@@ -21,6 +21,7 @@ import 'package:ummaly/core/services/subscription_service.dart';
 import 'package:ummaly/core/services/favorites_service.dart';
 import 'package:ummaly/features/pillars/pillar_content_service.dart';
 import 'package:ummaly/core/services/prayer_time_service.dart';
+import 'package:ummaly/core/services/prayer_notification_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:math' as math;
 
@@ -38,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   final _prayerService = PrayerTimeService.instance;
   final _favService = FavoritesService.instance;
+  final _notifService = PrayerNotificationService.instance;
 
   @override
   void initState() {
@@ -54,12 +56,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fadeController.forward();
     _prayerService.addListener(_onUpdate);
     _favService.addListener(_onUpdate);
+    _notifService.addListener(_onUpdate);
   }
 
   @override
   void dispose() {
     _prayerService.removeListener(_onUpdate);
     _favService.removeListener(_onUpdate);
+    _notifService.removeListener(_onUpdate);
     _fadeController.dispose();
     super.dispose();
   }
@@ -311,12 +315,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
 
-                    // ── Next Prayer Card ──
+                    // ── Next Prayer Card + Notification Toggle ──
                     if (_prayerService.times.isNotEmpty)
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                          child: _buildNextPrayerHomeCard(),
+                          child: Column(
+                            children: [
+                              _buildNextPrayerHomeCard(),
+                              // Compact notification toggle — auth users only
+                              if (!widget.isGuest)
+                                _buildNotificationToggleBar(),
+                            ],
+                          ),
                         ),
                       ),
 
@@ -589,6 +600,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final timeUntil = _prayerService.timeUntilNext;
     const accent = Color(0xFF0D7377);
 
+    // If auth user, flatten bottom corners so the notification bar attaches
+    final hasNotifBar = !widget.isGuest;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -598,7 +612,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: hasNotifBar
+            ? const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              )
+            : BorderRadius.circular(16),
         border: Border.all(color: accent.withOpacity(0.25)),
         boxShadow: [
           BoxShadow(
@@ -683,6 +702,71 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Compact notification toggle bar that sits directly below the prayer card.
+  /// Only shown for authenticated users.
+  Widget _buildNotificationToggleBar() {
+    const accent = Color(0xFF0D7377);
+    final enabled = _notifService.enabled;
+
+    return GestureDetector(
+      onTap: () => _notifService.setEnabled(!enabled),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1A2E),
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(14),
+            bottomRight: Radius.circular(14),
+          ),
+          border: Border(
+            left: BorderSide(color: accent.withOpacity(0.25)),
+            right: BorderSide(color: accent.withOpacity(0.25)),
+            bottom: BorderSide(color: accent.withOpacity(0.25)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              enabled
+                  ? Icons.notifications_active_rounded
+                  : Icons.notifications_off_outlined,
+              color: enabled ? accent : Colors.white38,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                enabled
+                    ? 'Reminders ${_notifService.minutesBefore}min before'
+                    : 'Prayer reminders off',
+                style: TextStyle(
+                  color: enabled ? Colors.white70 : Colors.white38,
+                  fontSize: 12,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 20,
+              width: 34,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: Switch.adaptive(
+                  value: enabled,
+                  onChanged: (v) => _notifService.setEnabled(v),
+                  activeColor: accent,
+                  activeTrackColor: accent.withOpacity(0.3),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

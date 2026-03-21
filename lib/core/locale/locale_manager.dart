@@ -18,7 +18,8 @@ class LocaleManager {
   Locale _currentLocale = const Locale('en');
   Locale get currentLocale => _currentLocale;
 
-  /// ✅ Call this during app startup AFTER Firebase.initializeApp()
+  /// Full init — loads locale from Firestore if logged in.
+  /// Prefer [initFromDevice] at startup to avoid blocking on network.
   Future<void> init() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -26,6 +27,12 @@ class LocaleManager {
     } else {
       _setLocaleFromDevice();
     }
+  }
+
+  /// Fast init — uses device locale only (no network call).
+  /// The server-side language preference is loaded later by AuthGate.
+  void initFromDevice() {
+    _setLocaleFromDevice();
   }
 
   /// Loads saved locale from Firestore if available.

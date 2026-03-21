@@ -29,7 +29,7 @@ class RestaurantService {
     bool? halalOnly, // optional – if null, server default applies
     String? sort,
   }) async {
-    final uri = Config.restaurantsSearchUri(
+    final uri = AppConfig.restaurantsSearchUri(
       query: query,
       near: near,
       lat: lat,
@@ -81,7 +81,7 @@ class RestaurantService {
     String intent = 'CERTIFY', // 'CERTIFY' | 'DISPUTE'
     String? authToken,
   }) async {
-    final rs = Uri.parse(Config.restaurantsSearchEndpoint);
+    final rs = Uri.parse(AppConfig.restaurantsSearchEndpoint);
     final uri = Uri(
       scheme: rs.scheme,
       host: rs.host,

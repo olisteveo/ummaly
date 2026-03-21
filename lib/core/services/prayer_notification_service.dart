@@ -80,13 +80,20 @@ class PrayerNotificationService extends ChangeNotifier {
   // ── Public API ──
 
   /// Enable or disable prayer notifications globally.
+  ///
   /// Requests notification permission from the OS when enabling.
+  /// The preference is saved regardless of permission outcome — on web
+  /// the browser may block permission (especially in incognito), but the
+  /// scheduler still runs so notifications fire once permission is granted.
+  /// The [WebNotifier.showNow] and [MobileNotifier.showNow] already guard
+  /// against missing permission at delivery time.
   Future<void> setEnabled(bool value) async {
     if (value) {
+      // Request permission — non-blocking: we save the preference either way
       final granted = await NotificationDispatcher.instance.requestPermission();
       if (!granted) {
-        debugPrint('[PrayerNotif] Permission denied');
-        return; // Don't enable if permission denied
+        debugPrint('[PrayerNotif] Permission not yet granted — '
+            'saving preference, will deliver when allowed');
       }
     }
 

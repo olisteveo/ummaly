@@ -254,7 +254,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
 
   // Build proposals endpoint from restaurantsSearchEndpoint host.
   Uri _halalProposalsUri() {
-    final rs = Uri.parse(Config.restaurantsSearchEndpoint);
+    final rs = Uri.parse(AppConfig.restaurantsSearchEndpoint);
     return Uri(
       scheme: rs.scheme,
       host: rs.host,
@@ -681,7 +681,7 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         if (pos != null) 'lng': pos.longitude.toString(),
       };
 
-      final uri = Uri.parse(Config.restaurantsSearchEndpoint)
+      final uri = Uri.parse(AppConfig.restaurantsSearchEndpoint)
           .replace(queryParameters: qp);
 
       if (kDebugMode) debugPrint('[Search] GET $uri');

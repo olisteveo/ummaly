@@ -13,6 +13,17 @@
 .swiftpm/
 migrate_working_dir/
 
+# ── Secrets & credentials (NEVER commit) ──
+.env
+.env.*
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+android/secrets.properties
+**/service-account*.json
+
+# Backup / junk
+backup/
+
 # IntelliJ related
 *.iml
 *.ipr

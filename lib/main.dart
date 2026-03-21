@@ -21,39 +21,18 @@ import 'package:ummaly/core/services/prayer_notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
+  // ── Critical path (must complete before UI) ──
+  await Future.wait([
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+    _initFirebase(),
+    EasyLocalization.ensureInitialized(),
   ]);
 
-  // Firebase init
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
-  } catch (_) {
-    Firebase.app();
-  }
+  // Set locale from device (no Firestore call — AuthGate handles
+  // the server-side language preference for logged-in users).
+  LocaleManager().initFromDevice();
 
-  await EasyLocalization.ensureInitialized();
-  await LocaleManager().init();
-
-  // Pre-load Islamic content data from JSON assets.
-  await PillarContentService.init();
-
-  // Start loading prayer times (non-blocking — continues in background).
-  PrayerTimeService.instance.fetch();
-
-  // Initialise RevenueCat subscription service (non-blocking on web)
-  await SubscriptionService.instance.init();
-
-  // Load favorites from local storage
-  await FavoritesService.instance.load();
-
-  // Load prayer notification preferences and start scheduler if enabled.
-  await PrayerNotificationService.instance.load();
-
+  // ── Launch UI immediately — splash screen plays while services load ──
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en')],
@@ -63,6 +42,31 @@ Future<void> main() async {
       child: const UmmalyApp(),
     ),
   );
+
+  // ── Background init (runs while splash is showing) ──
+  // These all run in parallel, none blocks the UI.
+  Future.wait([
+    PillarContentService.init(),
+    SubscriptionService.instance.init(),
+    FavoritesService.instance.load(),
+    PrayerNotificationService.instance.load(),
+  ]);
+
+  // Fire-and-forget — prayer times load in the background.
+  PrayerTimeService.instance.fetch();
+}
+
+/// Initialise Firebase with error recovery.
+Future<void> _initFirebase() async {
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (_) {
+    Firebase.app();
+  }
 }
 
 class UmmalyApp extends StatelessWidget {

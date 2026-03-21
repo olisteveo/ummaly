@@ -73,9 +73,13 @@ class AccountService {
       },
     );
 
-    if (response.statusCode == 200 || response.statusCode == 401) {
+    if (response.statusCode == 200) {
       await _auth.signOut();
       return;
+    }
+
+    if (response.statusCode == 401) {
+      throw Exception('Authentication failed. Please sign in again and retry.');
     }
 
     final error = json.decode(response.body)['error'] ?? 'Unknown error';
