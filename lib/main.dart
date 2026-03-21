@@ -16,6 +16,7 @@ import 'package:ummaly/core/services/prayer_time_service.dart';
 import 'package:ummaly/features/splash/mosque_splash.dart';
 import 'package:ummaly/core/services/subscription_service.dart';
 import 'package:ummaly/core/services/favorites_service.dart';
+import 'package:ummaly/core/services/prayer_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,9 @@ Future<void> main() async {
 
   // Load favorites from local storage
   await FavoritesService.instance.load();
+
+  // Load prayer notification preferences and start scheduler if enabled.
+  await PrayerNotificationService.instance.load();
 
   runApp(
     EasyLocalization(
