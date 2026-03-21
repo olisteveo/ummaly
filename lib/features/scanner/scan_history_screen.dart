@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemUiOverlayStyle
-import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/controllers/scan_history_controller.dart';
 import 'widgets/scan_history_item.dart';
@@ -15,17 +15,19 @@ class ScanHistoryScreen extends StatefulWidget {
 }
 
 class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
-  final ScanHistoryController controller = Get.put(ScanHistoryController());
+  final ScanHistoryController controller = ScanHistoryController();
   final ScrollController _scrollController = ScrollController();
   bool _showScrollToTop = false;
   bool _deletingAll = false;
 
-  // show onboarding tips once per visit
-  bool _tipsShown = false;
+  static const _tipsPrefKey = 'scan_history_tips_shown';
 
   @override
   void initState() {
     super.initState();
+
+    // Listen to controller changes
+    controller.addListener(_onControllerChanged);
 
     // Fetch once after first frame and show onboarding tips
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -41,19 +43,25 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
     });
   }
 
-  void _maybeShowTips() {
-    if (_tipsShown) return;
-    _tipsShown = true;
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
 
+  Future<void> _maybeShowTips() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_tipsPrefKey) == true) return;
+
+    // Mark as shown permanently
+    await prefs.setBool(_tipsPrefKey, true);
+
+    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    // Tip 1
     messenger.showSnackBar(
       const SnackBar(
         content: Text('Tip: swipe a row left to delete it.'),
         duration: Duration(milliseconds: 2200),
       ),
     );
-    // Tip 2 (chained)
     Future.delayed(const Duration(milliseconds: 2300), () {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -67,6 +75,8 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
 
   @override
   void dispose() {
+    controller.removeListener(_onControllerChanged);
+    controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -141,7 +151,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         // Small count under title
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(28),
-          child: Obx(() {
+          child: Builder(builder: (_) {
             final count = controller.history.length;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -181,8 +191,8 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         ],
       ),
 
-      body: Obx(() {
-        if (controller.isLoading.value && controller.history.isEmpty) {
+      body: Builder(builder: (context) {
+        if (controller.isLoading && controller.history.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
@@ -203,15 +213,15 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
         // Build grouped list: Today / Yesterday / Last 7 Days / Older
         final entries = _buildGroupedEntries(controller.history);
 
-        final showFooterLoader = controller.hasMore.value;
+        final showFooterLoader = controller.hasMore;
         final itemCount = entries.length + (showFooterLoader ? 1 : 0);
 
         return RefreshIndicator(
           onRefresh: _onRefresh,
           child: NotificationListener<ScrollNotification>(
             onNotification: (scrollInfo) {
-              if (!controller.isLoading.value &&
-                  controller.hasMore.value &&
+              if (!controller.isLoading &&
+                  controller.hasMore &&
                   scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent) {
                 controller.fetchHistory(widget.firebaseUid, loadMore: true);
               }
@@ -238,97 +248,93 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen> {
                 }
 
                 final item = entry.item!;
+                final barcode = item['product']?['barcode'] ?? item['barcode'] ?? '';
+                final timestamp = item['latest_scan'] ??
+                    item['scan_timestamp'] ??
+                    DateTime.now().toIso8601String();
 
-                return Obx(() {
-                  final barcode = item['product']?['barcode'] ?? item['barcode'] ?? '';
-                  final timestamp = item['latest_scan'] ??
-                      item['scan_timestamp'] ??
-                      DateTime.now().toIso8601String();
+                return Dismissible(
+                  key: Key('${barcode}_$timestamp'),
+                  direction: DismissDirection.endToStart,
 
-                  return Dismissible(
-                    key: Key('${barcode}_$timestamp'),
-                    direction: DismissDirection.endToStart,
-
-                    // Neutral background (required when using secondaryBackground)
-                    background: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete_outline, color: Colors.white70, size: 28),
+                  // Neutral background
+                  background: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete_outline, color: Colors.white70, size: 28),
+                  ),
 
-                    // Red bin for left-swipe (endToStart)
-                    secondaryBackground: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete, color: Colors.white, size: 28),
+                  // Red bin for left-swipe
+                  secondaryBackground: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white, size: 28),
+                  ),
 
-                    confirmDismiss: (direction) async {
-                      return await showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Confirm Delete'),
-                            content: const Text('Are you sure you want to delete this scan history entry?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    onDismissed: (direction) async {
-                      // Backend delete, then UI update
-                      await controller.deleteHistoryItem(item, widget.firebaseUid);
-                      controller.history.remove(item);
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Confirm Delete'),
+                          content: const Text('Are you sure you want to delete this scan history entry?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  onDismissed: (direction) async {
+                    await controller.deleteHistoryItem(item, widget.firebaseUid);
 
+                    if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Scan history entry deleted')),
                       );
-                    },
-                    child: ScanHistoryItem(
-                      item: item,
-                      index: entries[index].originalIndex ?? index,
-                      isExpanded: controller.expandedIndex.value ==
-                          (entries[index].originalIndex ?? index),
-                      onToggle: () => controller.toggleExpanded(
-                        entries[index].originalIndex ?? index,
-                      ),
-                      // Update flag UI immediately after dialog returns
-                      onFlagChanged: (bool flagged, int delta) {
-                        final current =
-                        (item['flagsCount'] ?? item['flags_count'] ?? 0) as int;
-                        final next = (current + delta).clamp(0, 999999);
-                        item['flagsCount'] = next;
-                        item['flags_count'] = next; // keep both keys in sync
-                        item['myFlagged'] = flagged;
-
-                        final msg = flagged ? 'Flag added' : 'Flag removed';
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(msg)),
-                        );
-                        setState(() {}); // refresh the row
-                      },
+                    }
+                  },
+                  child: ScanHistoryItem(
+                    item: item,
+                    index: entries[index].originalIndex ?? index,
+                    isExpanded: controller.expandedIndex ==
+                        (entries[index].originalIndex ?? index),
+                    onToggle: () => controller.toggleExpanded(
+                      entries[index].originalIndex ?? index,
                     ),
-                  );
-                });
+                    onFlagChanged: (bool flagged, int delta) {
+                      final current =
+                      (item['flagsCount'] ?? item['flags_count'] ?? 0) as int;
+                      final next = (current + delta).clamp(0, 999999);
+                      item['flagsCount'] = next;
+                      item['flags_count'] = next;
+                      item['myFlagged'] = flagged;
+
+                      final msg = flagged ? 'Flag added' : 'Flag removed';
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(msg)),
+                      );
+                      setState(() {});
+                    },
+                  ),
+                );
               },
             ),
           ),
@@ -381,7 +387,7 @@ class _ListEntry {
   final _RowType type;
   final String? header;
   final Map<String, dynamic>? item;
-  final int? originalIndex; // useful for toggle/expanded index
+  final int? originalIndex;
 
   _ListEntry.header(this.header)
       : type = _RowType.header,
@@ -397,10 +403,9 @@ enum _RowType { header, item }
 
 /// Build grouped entries without touching the controller
 List<_ListEntry> _buildGroupedEntries(List history) {
-  // Defensive copy (maps keep identity)
   final items = history.cast<Map<String, dynamic>>().toList();
 
-  DateTime? _parseTs(Map<String, dynamic> it) {
+  DateTime? parseTs(Map<String, dynamic> it) {
     final raw = it['latest_scan'] ?? it['scan_timestamp'];
     if (raw == null) return null;
     try {
@@ -426,7 +431,7 @@ List<_ListEntry> _buildGroupedEntries(List history) {
 
   for (var i = 0; i < items.length; i++) {
     final it = items[i];
-    final ts = _parseTs(it);
+    final ts = parseTs(it);
     if (ts == null) {
       buckets['Older']!.add(it);
       continue;
@@ -444,14 +449,14 @@ List<_ListEntry> _buildGroupedEntries(List history) {
   }
 
   // Sort each bucket by newest first
-  int _cmp(Map<String, dynamic> a, Map<String, dynamic> b) {
-    final ta = _parseTs(a) ?? DateTime.fromMillisecondsSinceEpoch(0);
-    final tb = _parseTs(b) ?? DateTime.fromMillisecondsSinceEpoch(0);
+  int cmp(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final ta = parseTs(a) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final tb = parseTs(b) ?? DateTime.fromMillisecondsSinceEpoch(0);
     return tb.compareTo(ta);
   }
 
   for (final k in buckets.keys) {
-    buckets[k]!.sort(_cmp);
+    buckets[k]!.sort(cmp);
   }
 
   // Build final list with headers

@@ -145,8 +145,9 @@ class AppConfig {
       Uri.parse(restaurantReviews(id));
 }
 
-/// Lightweight alias for legacy/import convenience.
-/// Some files import `Config.*`; keep in sync with AppConfig.
+/// @deprecated Use AppConfig directly. This alias exists for backward compatibility
+/// and will be removed in a future release. Migrate all `Config.x` calls to `AppConfig.x`.
+@Deprecated('Use AppConfig instead')
 class Config {
   static String get baseUrl             => AppConfig.baseUrl;
   static String get apiBaseUrl          => AppConfig.apiBaseUrl;

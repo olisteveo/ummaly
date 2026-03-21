@@ -64,14 +64,15 @@ class RestaurantCardLite extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        color: Colors.black12,
+        color: AppColors.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
       ),
       child: Text(
         text,
         style: const TextStyle(
           fontSize: 12,
-          color: Colors.black87,
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -241,8 +242,8 @@ class RestaurantCardLite extends StatelessWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: openingNow!
-                                      ? const Color(0xFF0A7F3F)
-                                      : muted,
+                                      ? AppColors.success
+                                      : AppColors.textSecondary,
                                 ),
                               ),
                             if (openingHours != null && openingHours!.isNotEmpty)

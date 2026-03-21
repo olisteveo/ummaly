@@ -9,6 +9,8 @@ import 'package:ummaly/theme/styles.dart';
 import 'package:ummaly/theme/islamic_patterns.dart';
 import 'package:ummaly/theme/animated_logo.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -71,25 +73,39 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        setState(() => _isGoogleLoading = false);
-        return; // User cancelled
+      if (kIsWeb) {
+        // Web: use Firebase Auth signInWithPopup directly
+        final provider = GoogleAuthProvider();
+        await FirebaseAuth.instance.signInWithPopup(provider);
+      } else {
+        // Mobile: use google_sign_in package
+        final googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) {
+          setState(() => _isGoogleLoading = false);
+          return; // User cancelled
+        }
+
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        await FirebaseAuth.instance.signInWithCredential(credential);
       }
 
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
       if (!mounted) return;
       Get.offAll(() => const AppShell());
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = AuthService.friendlyError(e);
+        _isGoogleLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = 'Google sign-in failed. Please try again.';
         _isGoogleLoading = false;
       });
     }
@@ -160,30 +176,40 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (_error.isNotEmpty) ...[
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.l,
-                        vertical: AppSpacing.m,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(AppRadius.m),
+                        color: const Color(0xFF2A1520),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: AppColors.error.withOpacity(0.3),
+                          color: const Color(0xFF5C2A3A),
+                          width: 1,
                         ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: AppColors.error,
-                            size: 20,
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                            ),
+                            child: const Icon(
+                              Icons.info_outline_rounded,
+                              color: Color(0xFFFF8A80),
+                              size: 18,
+                            ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _error,
-                              style: AppTextStyles.error.copyWith(
-                                color: const Color(0xFFFF8A8A),
+                              style: const TextStyle(
+                                color: Color(0xFFFFB4AB),
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
                               ),
                             ),
                           ),

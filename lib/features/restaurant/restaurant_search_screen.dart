@@ -417,7 +417,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
       final name = (e['name'] ?? '') as String? ?? '';
       final address = (e['address'] ?? '') as String? ?? '';
       final isSelected = _expandedIndex == i;
-      final hue = isSelected ? 140.0 : 275.0;
+      // Selected: gold accent (45°), Default: emerald teal (174°)
+      final hue = isSelected ? BitmapDescriptor.hueOrange : 174.0;
 
       final key = _placeKey(e);
       final id = key.isNotEmpty ? 'r_$key' : 'r_$i';
@@ -661,13 +662,11 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
         pos = await _tryGetPosition();
       }
 
+      // Token is optional — restaurant search is free for guests + logged-in users
       final token = await FirebaseAuth.instance.currentUser?.getIdToken();
-      if (token == null) {
-        throw Exception('Not authenticated (no Firebase ID token).');
-      }
 
       final headers = <String, String>{
-        'Authorization': 'Bearer $token',
+        if (token != null) 'Authorization': 'Bearer $token',
         'Accept': 'application/json',
       };
 
@@ -943,25 +942,30 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
   }
 
   Widget _chip(String text, {Color? bg, Color? fg, IconData? icon}) {
+    final chipBg = bg ?? AppColors.primary.withOpacity(0.08);
+    final chipFg = fg ?? AppColors.textPrimary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
-        color: bg ?? Colors.black12,
+        color: chipBg,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: (bg != null ? bg.withOpacity(0.4) : AppColors.primary.withOpacity(0.2)),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: fg ?? Colors.black87),
+            Icon(icon, size: 14, color: chipFg),
             const SizedBox(width: 6),
           ],
           Text(
             text,
             style: TextStyle(
               fontSize: 12,
-              color: fg ?? Colors.black87,
+              color: chipFg,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1196,15 +1200,15 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           if (halalVerified)
                             _chip(
                               'Halal (Verified)',
-                              bg: const Color(0xFFE6F5EC),
-                              fg: const Color(0xFF0A7F3F),
+                              bg: AppColors.halal.withOpacity(0.1),
+                              fg: AppColors.halal,
                               icon: Icons.verified,
                             ),
                           if (!halalVerified && isNotHalal)
                             _chip(
                               'Not Halal',
-                              bg: const Color(0xFFFFEBEE),
-                              fg: const Color(0xFFC62828),
+                              bg: AppColors.haram.withOpacity(0.1),
+                              fg: AppColors.haram,
                               icon: Icons.block,
                             ),
                           if (!halalVerified &&
@@ -1214,8 +1218,8 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                               communityCount > 0
                                   ? 'Claimed halal • $communityCount reports'
                                   : 'Claimed halal',
-                              bg: const Color(0xFFFFF3E0),
-                              fg: const Color(0xFF9A5B00),
+                              bg: AppColors.conditional.withOpacity(0.1),
+                              fg: AppColors.conditional,
                               icon: Icons.info_outline,
                             ),
 
@@ -1223,15 +1227,15 @@ class _RestaurantSearchScreenState extends State<RestaurantSearchScreen> {
                           if (halalVerified && alreadyDispute)
                             _chip(
                               'You disputed',
-                              bg: const Color(0xFFE8EAF6),
-                              fg: const Color(0xFF303F9F),
+                              bg: AppColors.primary.withOpacity(0.1),
+                              fg: AppColors.primary,
                               icon: Icons.person,
                             ),
                           if (!halalVerified && alreadyCert)
                             _chip(
                               'You reported',
-                              bg: const Color(0xFFE8EAF6),
-                              fg: const Color(0xFF303F9F),
+                              bg: AppColors.primary.withOpacity(0.1),
+                              fg: AppColors.primary,
                               icon: Icons.person,
                             ),
 

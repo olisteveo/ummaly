@@ -7,6 +7,7 @@ import 'package:ummaly/theme/islamic_patterns.dart';
 import 'package:ummaly/theme/animated_logo.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
 import 'package:ummaly/features/shell/app_shell.dart';
+// Splash screen now handled by AppLauncher in main.dart
 
 // ---------------------------------------------------------------------------
 // Onboarding Screen
@@ -48,7 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         .map((c) => CurvedAnimation(parent: c, curve: Curves.easeIn))
         .toList();
 
-    // Trigger first page fade-in immediately.
+    // Splash has already played (handled by AppLauncher), so start logo immediately
     _fadeControllers[0].forward();
 
     // Start auto-advance after logo animation finishes (~3.5s)
@@ -115,45 +116,51 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          // Page view — takes remaining space.
-          Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                if (notification is UserScrollNotification) {
-                  _userHasSwiped = true;
-                  _autoAdvanceTimer?.cancel();
-                }
-                return false;
-              },
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                itemCount: _pageCount,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    // First page: animated logo intro
-                    return _LogoIntroPage(fadeAnimation: _fadeAnimations[0]);
-                  }
-                  final page = _pages[index - 1]; // offset by 1
-                  return _OnboardingPage(
-                    data: page,
-                    fadeAnimation: _fadeAnimations[index],
-                  );
-                },
+          // Main onboarding content (always built underneath)
+          Column(
+            children: [
+              // Page view — takes remaining space.
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification is UserScrollNotification) {
+                      _userHasSwiped = true;
+                      _autoAdvanceTimer?.cancel();
+                    }
+                    return false;
+                  },
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    itemCount: _pageCount,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        // First page: animated logo intro
+                        return _LogoIntroPage(fadeAnimation: _fadeAnimations[0]);
+                      }
+                      final page = _pages[index - 1]; // offset by 1
+                      return _OnboardingPage(
+                        data: page,
+                        fadeAnimation: _fadeAnimations[index],
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
+
+              // Bottom section — indicators + buttons.
+              _BottomSection(
+                currentPage: _currentPage,
+                pageCount: _pageCount,
+                onGetStarted: _navigateToLogin,
+                onSignIn: _navigateToLogin,
+                onContinueAsGuest: _navigateAsGuest,
+              ),
+            ],
           ),
 
-          // Bottom section — indicators + buttons.
-          _BottomSection(
-            currentPage: _currentPage,
-            pageCount: _pageCount,
-            onGetStarted: _navigateToLogin,
-            onSignIn: _navigateToLogin,
-            onContinueAsGuest: _navigateAsGuest,
-          ),
         ],
       ),
     );

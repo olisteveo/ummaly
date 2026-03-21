@@ -1,5 +1,6 @@
 // Copyright © 2025 Oliver & Haidar. All rights reserved.
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,7 +17,10 @@ import 'package:ummaly/core/locale/locale_manager.dart';
 import 'package:ummaly/theme/styles.dart';
 import 'package:ummaly/theme/islamic_patterns.dart';
 import 'package:ummaly/theme/animated_logo.dart';
+import 'package:ummaly/core/services/subscription_service.dart';
+import 'package:ummaly/core/services/favorites_service.dart';
 import 'package:ummaly/features/pillars/pillar_content_service.dart';
+import 'package:ummaly/core/services/prayer_time_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:math' as math;
 
@@ -32,6 +36,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Future<String> _userNameFuture;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  final _prayerService = PrayerTimeService.instance;
+  final _favService = FavoritesService.instance;
 
   @override
   void initState() {
@@ -46,12 +52,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     );
     _fadeController.forward();
+    _prayerService.addListener(_onUpdate);
+    _favService.addListener(_onUpdate);
   }
 
   @override
   void dispose() {
+    _prayerService.removeListener(_onUpdate);
+    _favService.removeListener(_onUpdate);
     _fadeController.dispose();
     super.dispose();
+  }
+
+  void _onUpdate() {
+    if (mounted) setState(() {});
   }
 
   Future<String> getUserName() async {
@@ -157,7 +171,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                         ),
                                         Text(
-                                          'Unlock unlimited scans & save your history',
+                                          kIsWeb
+                                              ? 'Save favourites, get prayer notifications & more'
+                                              : 'Unlock unlimited scans & save your history',
                                           style: TextStyle(
                                             color: Colors.white.withOpacity(0.8),
                                             fontSize: 12,
@@ -196,23 +212,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           children: [
-                            // Barcode Scanner - Hero card
-                            _buildHeroCard(
-                              icon: Icons.qr_code_scanner_rounded,
-                              title: tr('barcode_scanner'),
-                              subtitle: 'Scan any product to check halal status',
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF0D7377),
-                                  Color(0xFF14897E),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              onTap: () {
-                                Get.to(() => const BarcodeScanScreen());
-                              },
-                            ),
+                            // Barcode Scanner (mobile) / Download CTA (web)
+                            if (!kIsWeb)
+                              _buildHeroCard(
+                                icon: Icons.qr_code_scanner_rounded,
+                                title: tr('barcode_scanner'),
+                                subtitle: 'Scan any product to check halal status',
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF0D7377),
+                                    Color(0xFF14897E),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                onTap: () {
+                                  Get.to(() => const BarcodeScanScreen());
+                                },
+                              )
+                            else
+                              _buildDownloadAppCard(),
                             const SizedBox(height: 16),
 
                             // Restaurant Finder - Hero card
@@ -240,10 +259,71 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
 
+                    // ── Favorite Scans (mobile only — scanning not available on web) ──
+                    if (!kIsWeb && _favService.favorites.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                          child: Row(
+                            children: [
+                              Text(
+                                'FAVORITE SCANS',
+                                style: AppTextStyles.label.copyWith(
+                                  color: AppColors.textSecondary,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_favService.count}',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 120,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            itemCount: _favService.favorites.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, i) {
+                              final fav = _favService.favorites[i];
+                              return _FavoriteScanCard(
+                                fav: fav,
+                                onTap: () {
+                                  // Navigate to scanner (could pre-fill barcode)
+                                  Get.to(() => const BarcodeScanScreen());
+                                },
+                                onRemove: () async {
+                                  await _favService.remove(fav.barcode);
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // ── Next Prayer Card ──
+                    if (_prayerService.times.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                          child: _buildNextPrayerHomeCard(),
+                        ),
+                      ),
+
                     // ── Daily Inspiration Banner ──
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
                         child: _buildDailyInspirationCard(),
                       ),
                     ),
@@ -408,6 +488,205 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Download app CTA card — shown on web in place of the barcode scanner.
+  Widget _buildDownloadAppCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D7377), Color(0xFF14897E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0D7377).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.qr_code_scanner_rounded,
+                    color: Colors.white, size: 32),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Halal Barcode Scanner',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Download the Ummaly app to scan any product and instantly verify its halal status',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.85),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _DownloadButton(
+                  icon: Icons.apple,
+                  label: 'App Store',
+                  onTap: () {
+                    // TODO: Replace with actual App Store URL
+                    // launchUrl(Uri.parse('https://apps.apple.com/app/ummaly/id...'));
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _DownloadButton(
+                  icon: Icons.shop_rounded,
+                  label: 'Google Play',
+                  onTap: () {
+                    // TODO: Replace with actual Play Store URL
+                    // launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.ummaly.ummaly'));
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Compact next-prayer card for the home screen.
+  Widget _buildNextPrayerHomeCard() {
+    final next = _prayerService.nextPrayer;
+    if (next == null || next.name == 'Sunrise') return const SizedBox.shrink();
+
+    final timeUntil = _prayerService.timeUntilNext;
+    const accent = Color(0xFF0D7377);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F1A2E), Color(0xFF162035)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withOpacity(0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.mosque_rounded,
+              color: accent,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Next Prayer',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      next.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      next.arabic,
+                      style: TextStyle(
+                        color: accent.withOpacity(0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                next.formatted,
+                style: const TextStyle(
+                  color: accent,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (timeUntil.isNotEmpty)
+                Text(
+                  'in $timeUntil',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.4),
+                    fontSize: 11,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Daily inspiration card with verse/hadith from PillarContentService
   Widget _buildDailyInspirationCard() {
     final svc = PillarContentService.instance;
@@ -560,18 +839,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   UmmalyLogo(size: 64, color: AppColors.gold.withOpacity(0.6)),
                   const SizedBox(height: 8),
                   Text(
-                    'بِسْمِ ٱللّٰهِ ٱلرَّحْمٰنِ ٱلرَّحِيمِ',
+                    PillarContentService.instance.monthlyArabic,
                     textDirection: dart_ui.TextDirection.rtl,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.gold.withOpacity(0.7),
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: 1,
+                      height: 1.6,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'In the name of Allah, the Most Gracious, the Most Merciful',
+                    PillarContentService.instance.monthlyEnglish,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.gold.withOpacity(0.45),
@@ -595,6 +875,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       barrierDismissible: false,
     );
     try {
+      await SubscriptionService.instance.logOut();
       await FirebaseAuth.instance.signOut();
       LocaleManager().resetToDeviceLocale();
       Get.back(); // close dialog
@@ -606,6 +887,125 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           backgroundColor: AppColors.error,
           colorText: Colors.white);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Favorite scan compact card (horizontal scroll)
+// ---------------------------------------------------------------------------
+
+class _FavoriteScanCard extends StatelessWidget {
+  final FavoriteProduct fav;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _FavoriteScanCard({
+    required this.fav,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = AppStyleHelpers.halalStatusColor(fav.halalStatus);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: image + remove
+            Row(
+              children: [
+                // Tiny product image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: (fav.imageUrl != null && fav.imageUrl!.isNotEmpty)
+                      ? Image.network(
+                          fav.imageUrl!,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _placeholder(),
+                        )
+                      : _placeholder(),
+                ),
+                const Spacer(),
+                // Remove heart
+                GestureDetector(
+                  onTap: onRemove,
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    color: Colors.redAccent,
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Product name
+            Text(
+              fav.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                height: 1.2,
+              ),
+            ),
+            const Spacer(),
+
+            // Status chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: statusColor.withOpacity(0.4)),
+              ),
+              child: Text(
+                fav.halalStatus,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.image, color: Colors.grey[400], size: 18),
+    );
   }
 }
 
@@ -731,4 +1131,47 @@ class _IslamicArtPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_IslamicArtPainter oldDelegate) => false;
+}
+
+/// Store download button used in the web-only download CTA card.
+class _DownloadButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DownloadButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.18),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

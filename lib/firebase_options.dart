@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
     appId: '1:116981186736:web:4a25a39a75d4f61861fb75',
     messagingSenderId: '116981186736',
     projectId: 'app-c201b',
-    authDomain: 'app-c201b.firebaseapp.com',
+    authDomain: 'ummaly-c201b.firebaseapp.com',
     storageBucket: 'app-c201b.firebasestorage.app',
     measurementId: 'G-06EQ283Q3T',
   );

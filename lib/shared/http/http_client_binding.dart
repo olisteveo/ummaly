@@ -1,30 +1,30 @@
-import 'dart:async'; // <-- Needed for TimeoutException
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
+/// Cross-platform HTTP helper (works on web + mobile).
+///
+/// Uses `package:http` under the hood, which delegates to
+/// `XMLHttpRequest` on web and `dart:io` on native.
 class HttpClientBinding {
   /// Default network timeout for requests.
   static Duration defaultTimeout = const Duration(seconds: 20);
 
   static Future<_HttpResponse> get(
-      Uri uri, {
-        Map<String, String>? headers,
-        Duration? timeout,
-      }) {
-    return _send(
-      method: 'GET',
-      uri: uri,
-      headers: headers,
-      timeout: timeout,
-    );
+    Uri uri, {
+    Map<String, String>? headers,
+    Duration? timeout,
+  }) {
+    return _send(method: 'GET', uri: uri, headers: headers, timeout: timeout);
   }
 
   static Future<_HttpResponse> post(
-      Uri uri, {
-        Map<String, String>? headers,
-        Object? body,
-        Duration? timeout,
-      }) {
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration? timeout,
+  }) {
     return _send(
       method: 'POST',
       uri: uri,
@@ -35,11 +35,11 @@ class HttpClientBinding {
   }
 
   static Future<_HttpResponse> put(
-      Uri uri, {
-        Map<String, String>? headers,
-        Object? body,
-        Duration? timeout,
-      }) {
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration? timeout,
+  }) {
     return _send(
       method: 'PUT',
       uri: uri,
@@ -50,11 +50,11 @@ class HttpClientBinding {
   }
 
   static Future<_HttpResponse> delete(
-      Uri uri, {
-        Map<String, String>? headers,
-        Object? body, // Some APIs accept a body with DELETE
-        Duration? timeout,
-      }) {
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration? timeout,
+  }) {
     return _send(
       method: 'DELETE',
       uri: uri,
@@ -64,7 +64,6 @@ class HttpClientBinding {
     );
   }
 
-  /// Internal helper to open/send any HTTP method with optional JSON body.
   static Future<_HttpResponse> _send({
     required String method,
     required Uri uri,
@@ -72,57 +71,58 @@ class HttpClientBinding {
     Object? body,
     Duration? timeout,
   }) async {
-    final client = HttpClient();
     try {
-      final req = await client.openUrl(method, uri);
+      final allHeaders = <String, String>{
+        if (headers != null) ...headers,
+      };
 
-      // Apply headers first
-      headers?.forEach(req.headers.add);
-
-      // If there is a body and no explicit content-type was provided,
-      // default to JSON (common case in this app).
+      // Default to JSON content type when sending a body
       if (body != null &&
-          !(headers?.keys.any((k) => k.toLowerCase() == 'content-type') ??
-              false)) {
-        req.headers.set(
-          HttpHeaders.contentTypeHeader,
-          'application/json; charset=utf-8',
-        );
+          !allHeaders.keys.any((k) => k.toLowerCase() == 'content-type')) {
+        allHeaders['Content-Type'] = 'application/json; charset=utf-8';
       }
 
-      // Write body (String is written as-is; anything else JSON-encoded)
-      if (body != null) {
-        if (body is String) {
-          req.write(body);
-        } else {
-          req.write(jsonEncode(body));
-        }
+      final encodedBody = body != null
+          ? (body is String ? body : jsonEncode(body))
+          : null;
+
+      late http.Response res;
+
+      switch (method) {
+        case 'GET':
+          res = await http.get(uri, headers: allHeaders)
+              .timeout(timeout ?? defaultTimeout);
+          break;
+        case 'POST':
+          res = await http.post(uri, headers: allHeaders, body: encodedBody)
+              .timeout(timeout ?? defaultTimeout);
+          break;
+        case 'PUT':
+          res = await http.put(uri, headers: allHeaders, body: encodedBody)
+              .timeout(timeout ?? defaultTimeout);
+          break;
+        case 'DELETE':
+          res = await http.delete(uri, headers: allHeaders, body: encodedBody)
+              .timeout(timeout ?? defaultTimeout);
+          break;
+        default:
+          return _HttpResponse(0, jsonEncode({
+            'error': 'unsupported_method',
+            'message': 'HTTP method $method is not supported',
+          }));
       }
 
-      // Send and collect response (with optional timeout)
-      final res = await req.close().timeout(timeout ?? defaultTimeout);
-      final resBody = await res.transform(utf8.decoder).join();
-
-      return _HttpResponse(res.statusCode, resBody);
-    } on SocketException catch (e) {
-      // Surface a network-y error in a consistent shape
-      return _HttpResponse(
-        0,
-        jsonEncode({
-          'error': 'network_error',
-          'message': e.message,
-        }),
-      );
+      return _HttpResponse(res.statusCode, res.body);
     } on TimeoutException {
-      return _HttpResponse(
-        0,
-        jsonEncode({
-          'error': 'timeout',
-          'message': 'Request timed out',
-        }),
-      );
-    } finally {
-      client.close(force: true);
+      return _HttpResponse(0, jsonEncode({
+        'error': 'timeout',
+        'message': 'Request timed out',
+      }));
+    } catch (e) {
+      return _HttpResponse(0, jsonEncode({
+        'error': 'network_error',
+        'message': e.toString(),
+      }));
     }
   }
 }

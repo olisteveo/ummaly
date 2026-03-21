@@ -21,6 +21,9 @@ class PillarContentService {
   List<Map<String, dynamic>> _hadiths = [];
   List<Map<String, dynamic>> _proverbs = [];
 
+  // Monthly art card content
+  List<Map<String, dynamic>> _monthlyArt = [];
+
   // Pillar-specific
   List<String> _shahadahFacts = [];
   List<String> _salahFacts = [];
@@ -51,6 +54,7 @@ class PillarContentService {
       _loadJsonMap('assets/islamic_data/zakat_facts.json'),        // 5
       _loadJsonMap('assets/islamic_data/sawm_facts.json'),         // 6
       _loadJsonMap('assets/islamic_data/hajj_facts.json'),         // 7
+      _loadJsonList('assets/islamic_data/monthly_art.json'),       // 8
     ]);
 
     svc._quranicVerses = List<Map<String, dynamic>>.from(results[0] as List);
@@ -74,6 +78,8 @@ class PillarContentService {
     svc._zakatReflections = List<String>.from(zakat['reflections'] ?? []);
     svc._sawmReflections = List<String>.from(sawm['reflections'] ?? []);
     svc._hajjReflections = List<String>.from(hajj['reflections'] ?? []);
+
+    svc._monthlyArt = List<Map<String, dynamic>>.from(results[8] as List);
 
     svc._loaded = true;
   }
@@ -133,6 +139,32 @@ class PillarContentService {
     final v = _daily(_quranicVerses);
     return v['arabic'] as String?;
   }
+
+  // ============================================================
+  // MONTHLY ART CARD — rotates once per month
+  // ============================================================
+
+  /// Returns the month-based index (0-23) cycling through 24 entries over 2 years.
+  int get _monthIndex {
+    final now = DateTime.now();
+    // Use year * 12 + month to get a unique index that cycles every 24 months
+    return (now.year * 12 + now.month) % (_monthlyArt.isEmpty ? 1 : _monthlyArt.length);
+  }
+
+  Map<String, dynamic> get monthlyArtData {
+    if (_monthlyArt.isEmpty) {
+      return {
+        'arabic': 'بِسْمِ ٱللّٰهِ ٱلرَّحْمٰنِ ٱلرَّحِيمِ',
+        'english': 'In the name of Allah, the Most Gracious, the Most Merciful',
+        'source': 'Opening of the Quran',
+      };
+    }
+    return _monthlyArt[_monthIndex];
+  }
+
+  String get monthlyArabic => monthlyArtData['arabic'] as String;
+  String get monthlyEnglish => monthlyArtData['english'] as String;
+  String get monthlySource => monthlyArtData['source'] as String;
 
   // ============================================================
   // DAILY HADITH

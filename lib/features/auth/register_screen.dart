@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
@@ -106,25 +108,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        setState(() => _isGoogleLoading = false);
-        return;
+      if (kIsWeb) {
+        // Web: use Firebase Auth signInWithPopup directly
+        final provider = GoogleAuthProvider();
+        await FirebaseAuth.instance.signInWithPopup(provider);
+      } else {
+        // Mobile: use google_sign_in package
+        final googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) {
+          setState(() => _isGoogleLoading = false);
+          return;
+        }
+
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        await FirebaseAuth.instance.signInWithCredential(credential);
       }
 
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
       if (!mounted) return;
       Get.offAll(() => const AppShell());
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        errorMessage = AuthService.friendlyError(e);
+        _isGoogleLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        errorMessage = 'Google sign-in failed. Please try again.';
         _isGoogleLoading = false;
       });
     }
@@ -263,28 +279,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (errorMessage.isNotEmpty) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.m),
+                  color: const Color(0xFF2A1520),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: AppColors.error.withOpacity(0.4),
+                    color: const Color(0xFF5C2A3A),
                     width: 1,
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Color(0xFFFF8A80), size: 20),
-                    const SizedBox(width: 10),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFFFF8A80),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         errorMessage,
                         style: const TextStyle(
-                          color: Color(0xFFFF8A80),
+                          color: Color(0xFFFFB4AB),
                           fontFamily: 'Poppins',
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
+                          height: 1.4,
                         ),
                       ),
                     ),

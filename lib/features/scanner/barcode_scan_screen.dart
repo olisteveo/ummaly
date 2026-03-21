@@ -1,4 +1,3 @@
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Haptics
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -10,8 +9,7 @@ import 'package:ummaly/core/controllers/barcode_scan_controller.dart';
 import 'package:ummaly/features/scanner/widgets/product_card.dart';
 import 'package:ummaly/features/scanner/widgets/scanner_overlay.dart';
 import 'package:ummaly/features/scanner/scan_history_screen.dart';
-import 'package:ummaly/features/scanner/widgets/processing_overlay.dart'; // <-- shared overlay
-import 'package:ummaly/theme/styles.dart';
+import 'package:ummaly/features/scanner/widgets/processing_overlay.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({Key? key}) : super(key: key);
@@ -52,14 +50,26 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       child: Consumer<BarcodeScanController>(
         builder: (context, controller, _) {
           return Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: Colors.black,
+            extendBodyBehindAppBar: true,
             appBar: AppBar(
-              title: const Text("Scan Product"),
-              backgroundColor: AppColors.scanner,
+              title: const Text(
+                'Scan Product',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              centerTitle: true,
+              backgroundColor: Colors.black.withOpacity(0.3),
+              elevation: 0,
+              foregroundColor: Colors.white,
+              systemOverlayStyle: SystemUiOverlayStyle.light,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.history),
-                  tooltip: "View Scan History",
+                  icon: const Icon(Icons.history_rounded),
+                  tooltip: 'Scan History',
                   onPressed: () async {
                     final String firebaseUid =
                         FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -69,7 +79,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                       try { await controller.cameraController.start(); } catch (_) {}
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('You need to log in first')),
+                        const SnackBar(content: Text('Sign in to view history')),
                       );
                     }
                   },
@@ -80,9 +90,10 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     final isTorchOn = state == TorchState.on;
                     return IconButton(
                       icon: Icon(
-                        isTorchOn ? Icons.flash_on : Icons.flash_off,
-                        color: isTorchOn ? Colors.yellow : Colors.white,
+                        isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                        color: isTorchOn ? Colors.amber : Colors.white70,
                       ),
+                      tooltip: isTorchOn ? 'Turn off torch' : 'Turn on torch',
                       onPressed: controller.toggleTorch,
                     );
                   },
@@ -107,15 +118,19 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     );
                     return slide;
                   },
-                  child: controller.productData != null ||
+                  child: controller.product != null ||
                       controller.errorMessage != null
                       ? ProductCard(
                     key: const ValueKey('productCard'),
-                    productData: controller.productData,
+                    product: controller.product,
                     errorMessage: controller.errorMessage,
+                    isQuotaBlock: controller.isQuotaBlock,
                     onScanAgain: () {
-                      controller.resetScan(); // resetScan is void; no await
+                      controller.resetScan();
                     },
+                    onRetry: controller.errorMessage != null
+                        ? () => controller.retryScan()
+                        : null,
                   )
                       : Stack(
                     key: const ValueKey('scannerView'),

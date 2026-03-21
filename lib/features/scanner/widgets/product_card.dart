@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:ummaly/theme/styles.dart';
+import 'package:ummaly/core/models/product.dart';
 import 'package:ummaly/core/services/product_flag_service.dart';
+import 'package:ummaly/core/services/favorites_service.dart';
+import 'package:ummaly/features/auth/register_screen.dart';
+import 'package:ummaly/features/subscription/paywall_screen.dart';
 import 'package:ummaly/features/scanner/widgets/product_flag_dialog.dart';
 
-/// Product card (V2, refined header + interactions)
+/// Product card (V3, typed Product model)
 /// - hero header (image + brand)
 /// - status chip below title/brand, right-aligned
 /// - AI confidence rating label + progress bar
@@ -13,15 +19,21 @@ import 'package:ummaly/features/scanner/widgets/product_flag_dialog.dart';
 /// - tap name to view full title; tap image to view fullscreen zoomable image
 /// - flag icon to create/retract a user flag, with count
 class ProductCard extends StatefulWidget {
-  final Map<String, dynamic>? productData;
+  final Product? product;
   final String? errorMessage;
   final VoidCallback onScanAgain;
+  final VoidCallback? onRetry;
+
+  /// When true, the error is a scan-quota limit and should show upgrade CTA.
+  final bool isQuotaBlock;
 
   const ProductCard({
     Key? key,
-    this.productData,
+    this.product,
     this.errorMessage,
     required this.onScanAgain,
+    this.onRetry,
+    this.isQuotaBlock = false,
   }) : super(key: key);
 
   @override
@@ -29,38 +41,24 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard> {
-  bool? _myFlagged; // null until loaded
-  int? _flagsCount; // null until loaded
+  bool? _myFlagged;
+  int? _flagsCount;
   bool _loadingFlagMeta = false;
-
-  int? get _productId {
-    final pd = widget.productData;
-    if (pd == null) return null;
-    final v = pd['id'];
-    if (v is int) return v;
-    if (v is String) return int.tryParse(v);
-    return null;
-  }
-
-  String? get _barcode {
-    final pd = widget.productData;
-    if (pd == null) return null;
-    final v = pd['barcode'];
-    if (v == null) return null;
-    return v.toString();
-  }
+  bool _isFavorited = false;
 
   @override
   void initState() {
     super.initState();
-    // Prefer values provided by the API payload to avoid extra calls
-    _myFlagged = widget.productData?['myFlagged'] as bool?;
-    final fc = widget.productData?['flagsCount'];
-    _flagsCount = fc is int ? fc : (fc is String ? int.tryParse(fc) : null);
+    final p = widget.product;
+    if (p != null) {
+      _myFlagged = p.myFlagged;
+      _flagsCount = p.flagsCount;
+      _isFavorited = FavoritesService.instance.isFavorited(p.barcode);
 
-    // If not present, try to fetch metadata in the background
-    if ((_myFlagged == null || _flagsCount == null) && _productId != null) {
-      _fetchFlagMeta(_productId!);
+      // If not provided by API, fetch in background
+      if ((_myFlagged == null || _flagsCount == null) && p.id != null) {
+        _fetchFlagMeta(p.id!);
+      }
     }
   }
 
@@ -84,17 +82,16 @@ class _ProductCardState extends State<ProductCard> {
   }
 
   Future<void> _onFlagPressed() async {
-    // Allow dialog if we have either a numeric product id OR a barcode
-    final pid = _productId;
-    final code = _barcode;
-    if (pid == null && (code == null || code.isEmpty)) return;
+    final p = widget.product;
+    if (p == null) return;
+    if (p.id == null && p.barcode.isEmpty) return;
 
     final result = await showModalBottomSheet<ProductFlagResult>(
       context: context,
       isScrollControlled: true,
       builder: (_) => ProductFlagDialog(
-        productId: pid,           // nullable; dialog will prefer barcode for creation
-        barcode: code,
+        productId: p.id,
+        barcode: p.barcode.isNotEmpty ? p.barcode : null,
         initiallyFlagged: _myFlagged ?? false,
       ),
     );
@@ -113,35 +110,18 @@ class _ProductCardState extends State<ProductCard> {
   @override
   Widget build(BuildContext context) {
     final errorMessage = widget.errorMessage;
-    final productData = widget.productData;
+    final p = widget.product;
 
-    if (errorMessage == null && productData == null) return const SizedBox();
+    if (errorMessage == null && p == null) return const SizedBox();
     final theme = Theme.of(context);
-    final pd = productData;
 
-    // Steps (timeline)
-    final List<dynamic> steps = (pd?['analysis_steps'] as List?) ?? const [];
+    // If error only (no product), show error card
+    if (p == null) {
+      return _buildErrorCard(theme, errorMessage!);
+    }
 
-    // Flags — support {term,status,notes?} or {name,status,notes?}
-    final List<dynamic> rawFlags = (pd?['halal_matches'] as List?) ?? const [];
-    final flags = rawFlags
-        .map((e) => e is Map ? e.cast<String, dynamic>() : <String, dynamic>{})
-        .where((m) => (m['term'] ?? m['name'] ?? '').toString().trim().isNotEmpty)
-        .toList();
-
-    final status = (pd?['halal_status']?.toString() ?? 'UNKNOWN').toUpperCase();
-    final statusColor = AppStyleHelpers.halalStatusColor(status);
-    final confidence =
-    (pd?['confidence'] is num) ? (pd!['confidence'] as num).toDouble() : null;
-    final ingredientsText = pd?['ingredients']?.toString() ?? '';
-
-    final name = pd?['name']?.toString() ?? 'Unnamed Product';
-    final brand = pd?['brand']?.toString();
-    final imageUrl = pd?['image_url']?.toString();
-
-    // Determine if we can open the flag dialog from this UI state
-    final bool _canOpenFlag =
-        _productId != null || ((_barcode ?? '').isNotEmpty);
+    final statusColor = AppStyleHelpers.halalStatusColor(p.halalStatus);
+    final bool canOpenFlag = p.id != null || p.barcode.isNotEmpty;
 
     return Container(
       color: Colors.black.withOpacity(0.7),
@@ -159,27 +139,26 @@ class _ProductCardState extends State<ProductCard> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // HEADER (image + text column; chip and flag area are below title)
+                // HEADER (image + text column)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _HeroImage(
-                      url: imageUrl,
-                      onTap: () => _showImageDialog(context, imageUrl),
+                      url: p.imageUrl,
+                      onTap: () => _showImageDialog(context, p.imageUrl),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title can wrap up to 2 lines with ellipsis — tap to view full
                           InkWell(
-                            onTap: () => _showNameDialog(context, name, brand),
+                            onTap: () => _showNameDialog(context, p.name, p.brand),
                             borderRadius: BorderRadius.circular(6),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Text(
-                                name,
+                                p.name,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 softWrap: true,
@@ -190,11 +169,11 @@ class _ProductCardState extends State<ProductCard> {
                               ),
                             ),
                           ),
-                          if (brand != null && brand.isNotEmpty)
+                          if (p.brand != null && p.brand!.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                brand,
+                                p.brand!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodyMedium
@@ -210,12 +189,11 @@ class _ProductCardState extends State<ProductCard> {
                                   child: Align(
                                     alignment: Alignment.centerLeft,
                                     child: _StatusChip(
-                                      text: status,
+                                      text: p.halalStatus,
                                       color: statusColor,
                                     ),
                                   ),
                                 ),
-                                // Flag action and count
                                 if (_loadingFlagMeta)
                                   const SizedBox(
                                     width: 20,
@@ -227,7 +205,7 @@ class _ProductCardState extends State<ProductCard> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                        onPressed: _canOpenFlag ? _onFlagPressed : null,
+                                        onPressed: canOpenFlag ? _onFlagPressed : null,
                                         tooltip: (_myFlagged ?? false)
                                             ? 'You flagged this'
                                             : 'Flag this product',
@@ -242,8 +220,7 @@ class _ProductCardState extends State<ProductCard> {
                                       ),
                                       if (_flagsCount != null)
                                         Padding(
-                                          padding:
-                                          const EdgeInsets.only(right: 4.0),
+                                          padding: const EdgeInsets.only(right: 4.0),
                                           child: Text(
                                             _flagsCount.toString(),
                                             style: theme.textTheme.bodySmall,
@@ -261,7 +238,7 @@ class _ProductCardState extends State<ProductCard> {
                 ),
 
                 // AI CONFIDENCE LABEL + BAR
-                if (confidence != null) ...[
+                if (p.confidence != null) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -272,7 +249,7 @@ class _ProductCardState extends State<ProductCard> {
                           )),
                       const Spacer(),
                       Text(
-                        '${(confidence * 100).toStringAsFixed(0)}%',
+                        '${(p.confidence! * 100).toStringAsFixed(0)}%',
                         style: theme.textTheme.bodySmall
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
@@ -282,17 +259,17 @@ class _ProductCardState extends State<ProductCard> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
-                      value: confidence.clamp(0, 1),
+                      value: p.confidence!.clamp(0, 1),
                       minHeight: 8,
                     ),
                   ),
                 ],
 
                 // NOTES
-                if (pd?['notes'] != null && pd!['notes'].toString().isNotEmpty) ...[
+                if (p.notes != null && p.notes!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
-                    pd['notes'].toString(),
+                    p.notes!,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                       fontStyle: FontStyle.italic,
@@ -302,41 +279,37 @@ class _ProductCardState extends State<ProductCard> {
 
                 const SizedBox(height: 12),
 
-                // FLAGS AS CHIPS (ingredient-level flags from the AI scan)
-                if (flags.isNotEmpty) ...[
+                // FLAGGED INGREDIENTS AS CHIPS
+                if (p.halalMatches.isNotEmpty) ...[
                   Text('Flagged ingredients & terms',
                       style: theme.textTheme.titleMedium),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: flags.map((m) {
-                      final term = (m['term'] ?? m['name']).toString();
-                      final st = (m['status'] ?? 'conditional').toString();
-                      final notes = (m['notes'] ?? '').toString();
-                      final c = AppStyleHelpers.halalStatusColor(st);
-                      final label = notes.isNotEmpty ? '$term — $notes' : term;
+                    children: p.halalMatches.map((match) {
+                      final c = AppStyleHelpers.halalStatusColor(match.status);
+                      final label = match.notes != null && match.notes!.isNotEmpty
+                          ? '${match.term} — ${match.notes}'
+                          : match.term;
                       return Chip(
-                        label: Text('$label (${st.toUpperCase()})'),
+                        label: Text('$label (${match.status.toUpperCase()})'),
                         avatar: Icon(Icons.flag, size: 16, color: c),
                         backgroundColor: c.withOpacity(0.08),
                         shape: StadiumBorder(side: BorderSide(color: c)),
                         labelStyle: theme.textTheme.bodySmall,
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                       );
                     }).toList(),
                   ),
                 ] else ...[
                   Row(
                     children: [
-                      const Icon(Icons.check_circle,
-                          color: Colors.green, size: 18),
+                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
                       const SizedBox(width: 6),
                       Text(
                         'No flagged items found',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: Colors.green),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.green),
                       ),
                     ],
                   ),
@@ -345,31 +318,26 @@ class _ProductCardState extends State<ProductCard> {
                 const SizedBox(height: 12),
 
                 // COLLAPSIBLE INGREDIENTS
-                if (ingredientsText.isNotEmpty)
-                  _IngredientsTile(text: ingredientsText),
+                if (p.ingredients != null && p.ingredients!.isNotEmpty)
+                  _IngredientsTile(text: p.ingredients!),
 
                 const SizedBox(height: 8),
 
                 // TIMELINE STEPS
-                if (steps.isNotEmpty) ...[
+                if (p.analysisSteps.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text('Checks', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 6),
-                  ...List.generate(steps.length, (i) {
-                    final step = (steps[i] as Map).cast<String, dynamic>();
-                    final label = step['label']?.toString() ?? '';
-                    final s = step['status']?.toString() ?? 'done';
-                    final detail = step['detail']?.toString();
-
-                    final (icon, color) = AppStyleHelpers.stepVisual(s);
-                    final isLast = i == steps.length - 1;
+                  ...List.generate(p.analysisSteps.length, (i) {
+                    final step = p.analysisSteps[i];
+                    final (icon, color) = AppStyleHelpers.stepVisual(step.status);
+                    final isLast = i == p.analysisSteps.length - 1;
 
                     return _TimelineRow(
                       icon: icon,
                       color: color,
-                      title: label,
-                      subtitle:
-                      (detail != null && detail.isNotEmpty) ? detail : null,
+                      title: step.label,
+                      subtitle: step.detail,
                       showConnector: !isLast,
                     );
                   }),
@@ -377,11 +345,59 @@ class _ProductCardState extends State<ProductCard> {
 
                 const SizedBox(height: 16),
 
-                // SCAN AGAIN
-                ElevatedButton(
-                  style: AppButtons.secondaryButton,
-                  onPressed: widget.onScanAgain,
-                  child: const Text('Scan Again'),
+                // ACTION BUTTONS (Favorite + Share + Scan Again)
+                Row(
+                  children: [
+                    // Favorite button
+                    _FavIconButton(
+                      isFavorited: _isFavorited,
+                      onPressed: () async {
+                        final fav = FavoriteProduct(
+                          barcode: p.barcode,
+                          name: p.name,
+                          brand: p.brand,
+                          halalStatus: p.halalStatus,
+                          imageUrl: p.imageUrl,
+                        );
+                        final nowFav =
+                            await FavoritesService.instance.toggle(fav);
+                        setState(() => _isFavorited = nowFav);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(nowFav
+                                  ? 'Added to favorites'
+                                  : 'Removed from favorites'),
+                              duration: const Duration(milliseconds: 1500),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    // Share button
+                    OutlinedButton.icon(
+                      onPressed: () => _shareProduct(p),
+                      icon: const Icon(Icons.share_outlined, size: 18),
+                      label: const Text('Share'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.m),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Scan Again
+                    Expanded(
+                      child: ElevatedButton(
+                        style: AppButtons.secondaryButton,
+                        onPressed: widget.onScanAgain,
+                        child: const Text('Scan Again'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -389,6 +405,144 @@ class _ProductCardState extends State<ProductCard> {
         ),
       ),
     );
+  }
+
+  Widget _buildErrorCard(ThemeData theme, String error) {
+    final isQuota = widget.isQuotaBlock;
+    final isGuest = FirebaseAuth.instance.currentUser == null;
+
+    return Container(
+      color: Colors.black.withOpacity(0.7),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: AppCards.modalShadows,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isQuota ? Icons.lock_outline : Icons.error_outline,
+                color: isQuota ? AppColors.gold : Colors.orange,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                error,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 24),
+
+              // ── Quota block CTAs ──
+              if (isQuota) ...[
+                // Primary: Subscribe / Upgrade
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: AppButtons.primaryButton,
+                    onPressed: () async {
+                      final upgraded = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => const PaywallScreen(),
+                        ),
+                      );
+                      // If they subscribed, retry the scan
+                      if (upgraded == true && widget.onRetry != null) {
+                        widget.onRetry!();
+                      }
+                    },
+                    icon: const Icon(Icons.workspace_premium, size: 20),
+                    label: Text(isGuest
+                        ? 'Subscribe for Unlimited'
+                        : 'Upgrade to Premium'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Guest: also offer account creation without subscription
+                if (isGuest) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.l),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const RegisterScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.person_add, size: 18),
+                      label: const Text('Create Free Account'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+
+              // ── Regular error CTAs ──
+              if (!isQuota && widget.onRetry != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: AppButtons.secondaryButton,
+                    onPressed: widget.onRetry,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              // Always show scan-different option
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: widget.onScanAgain,
+                  child: const Text('Scan Different Product'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==== Share helper ====
+
+  void _shareProduct(Product p) {
+    final status = p.halalStatus.toUpperCase();
+    final flagged = p.halalMatches
+        .map((m) => '  • ${m.term} (${m.status})')
+        .join('\n');
+    final confidence = p.confidence != null
+        ? '\nAI Confidence: ${(p.confidence! * 100).toStringAsFixed(0)}%'
+        : '';
+
+    final text = StringBuffer()
+      ..writeln('${p.name}${p.brand != null ? ' by ${p.brand}' : ''}')
+      ..writeln('Halal Status: $status$confidence')
+      ..writeln()
+      ..writeln(flagged.isNotEmpty
+          ? 'Flagged ingredients:\n$flagged'
+          : 'No flagged ingredients found.')
+      ..writeln()
+      ..writeln('Checked with Ummaly — halal verification app');
+
+    SharePlus.instance.share(ShareParams(text: text.toString()));
   }
 
   // ==== Dialog helpers ====
@@ -554,6 +708,30 @@ class _IngredientsTile extends StatelessWidget {
   }
 }
 
+class _FavIconButton extends StatelessWidget {
+  final bool isFavorited;
+  final VoidCallback onPressed;
+  const _FavIconButton({required this.isFavorited, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: isFavorited ? 'Remove from favorites' : 'Add to favorites',
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+        child: Icon(
+          isFavorited ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+          key: ValueKey(isFavorited),
+          color: isFavorited ? Colors.redAccent : AppColors.textSecondary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+}
+
 class _TimelineRow extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -597,7 +775,7 @@ class _TimelineRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: theme.textTheme.bodyMedium),
-                if (subtitle != null)
+                if (subtitle != null && subtitle!.isNotEmpty)
                   Text(subtitle!, style: AppTextStyles.caption),
               ],
             ),

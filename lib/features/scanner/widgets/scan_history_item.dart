@@ -24,6 +24,7 @@ class ScanHistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final product = (item['product'] ?? {}) as Map<String, dynamic>;
     final String name = (product['name'] ?? 'Unknown Product').toString();
     final String brand = (product['brand'] ?? '').toString();
@@ -89,9 +90,7 @@ class ScanHistoryItem extends StatelessWidget {
                             name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: theme.textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           if (brand.isNotEmpty)
@@ -99,10 +98,8 @@ class ScanHistoryItem extends StatelessWidget {
                               brand,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: Colors.black54),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.textSecondary),
                             ),
                           const SizedBox(height: 6),
 
@@ -150,9 +147,7 @@ class ScanHistoryItem extends StatelessWidget {
                                               size: 14, color: Colors.red),
                                           const SizedBox(width: 4),
                                           Text('$flagsCount',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall),
+                                              style: theme.textTheme.bodySmall),
                                         ],
                                       ),
                                     ),
@@ -164,9 +159,7 @@ class ScanHistoryItem extends StatelessWidget {
                                         ? Icons.flag
                                         : Icons.outlined_flag),
                                     color: myFlagged
-                                        ? Theme.of(context)
-                                        .colorScheme
-                                        .primary
+                                        ? theme.colorScheme.primary
                                         : null,
                                     onPressed: () async {
                                       final res = await showModalBottomSheet<
@@ -200,17 +193,15 @@ class ScanHistoryItem extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.event, size: 16, color: Colors.black54),
+                    Icon(Icons.event, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         formattedDate,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: Colors.black87),
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: AppColors.textPrimary),
                       ),
                     ),
                   ],
@@ -220,27 +211,23 @@ class ScanHistoryItem extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.qr_code_2,
-                        size: 16, color: Colors.black45),
+                    Icon(Icons.qr_code_2,
+                        size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Barcode: $barcode',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.black54),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Scanned $scanCount time${scanCount > 1 ? 's' : ''}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.black54),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -254,21 +241,21 @@ class ScanHistoryItem extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                     child: Row(
                       children: [
-                        const Icon(Icons.format_list_bulleted,
-                            size: 18, color: Colors.black54),
+                        Icon(Icons.format_list_bulleted,
+                            size: 18, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text(
                           'Ingredients',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         const Spacer(),
                         Icon(
                           isExpanded ? Icons.expand_less : Icons.expand_more,
                           size: 22,
-                          color: Colors.black54,
+                          color: AppColors.textSecondary,
                         ),
                       ],
                     ),

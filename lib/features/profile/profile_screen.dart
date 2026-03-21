@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,6 +13,7 @@ import 'package:ummaly/features/scanner/scan_history_screen.dart';
 import 'package:ummaly/features/auth/login_screen.dart';
 import 'package:ummaly/features/auth/register_screen.dart';
 import 'package:ummaly/core/locale/locale_manager.dart';
+import 'package:ummaly/core/services/prayer_notification_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isGuest;
@@ -156,7 +158,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Get unlimited barcode scans, save your scan history, and personalise your experience.',
+                  kIsWeb
+                      ? 'Save your favourite restaurants, receive prayer notifications, and personalise your experience.'
+                      : 'Get unlimited barcode scans, save your scan history, and personalise your experience.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.cream.withOpacity(0.75),
@@ -217,12 +221,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildSectionLabel('WHAT YOU CAN DO'),
           const SizedBox(height: 8),
           _buildMenuCard([
-            _MenuItem(
-              icon: Icons.qr_code_scanner_rounded,
-              label: '5 Free Barcode Scans',
-              subtitle: 'Create an account for unlimited',
-              onTap: () {},
-            ),
+            if (!kIsWeb)
+              _MenuItem(
+                icon: Icons.qr_code_scanner_rounded,
+                label: '5 Free Barcode Scans',
+                subtitle: 'Create an account for unlimited',
+                onTap: () {},
+              ),
+            if (kIsWeb)
+              _MenuItem(
+                icon: Icons.phone_android_rounded,
+                label: 'Halal Barcode Scanner',
+                subtitle: 'Download the app to scan products',
+                onTap: () {},
+              ),
             _MenuItem(
               icon: Icons.restaurant_rounded,
               label: 'Restaurant Search',
@@ -291,21 +303,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ]),
 
+          if (!kIsWeb) ...[
+            const SizedBox(height: 24),
+            _buildSectionLabel('ACTIVITY'),
+            const SizedBox(height: 8),
+            _buildMenuCard([
+              _MenuItem(
+                icon: Icons.history_rounded,
+                label: 'Scan History',
+                onTap: () {
+                  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                  if (uid.isNotEmpty) {
+                    Get.to(() => ScanHistoryScreen(firebaseUid: uid));
+                  }
+                },
+              ),
+            ]),
+          ],
+
           const SizedBox(height: 24),
-          _buildSectionLabel('ACTIVITY'),
+          _buildSectionLabel('NOTIFICATIONS'),
           const SizedBox(height: 8),
-          _buildMenuCard([
-            _MenuItem(
-              icon: Icons.history_rounded,
-              label: 'Scan History',
-              onTap: () {
-                final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-                if (uid.isNotEmpty) {
-                  Get.to(() => ScanHistoryScreen(firebaseUid: uid));
-                }
-              },
-            ),
-          ]),
+          _PrayerNotificationSettings(),
 
           const SizedBox(height: 24),
           _buildSectionLabel('APP'),
@@ -577,4 +596,193 @@ class _MenuItem {
     this.subtitle,
     required this.onTap,
   });
+}
+
+/// Prayer notification settings card — lets users enable/disable prayer
+/// reminders and choose how many minutes before each prayer to be notified.
+class _PrayerNotificationSettings extends StatefulWidget {
+  @override
+  State<_PrayerNotificationSettings> createState() =>
+      _PrayerNotificationSettingsState();
+}
+
+class _PrayerNotificationSettingsState
+    extends State<_PrayerNotificationSettings> {
+  final _service = PrayerNotificationService.instance;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await _service.load();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider, width: 0.5),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider, width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Master toggle
+          SwitchListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            secondary: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.prayer.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.notifications_active_rounded,
+                  color: AppColors.prayer, size: 20),
+            ),
+            title: const Text(
+              'Prayer Reminders',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            subtitle: Text(
+              _service.enabled
+                  ? '${_service.minutesBefore} min before each prayer'
+                  : 'Get notified before prayer times',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary.withOpacity(0.7),
+                fontFamily: 'Poppins',
+              ),
+            ),
+            value: _service.enabled,
+            activeColor: AppColors.primary,
+            onChanged: (val) async {
+              await _service.setEnabled(val);
+              setState(() {});
+            },
+          ),
+
+          // Minutes selector (only visible when enabled)
+          if (_service.enabled) ...[
+            Divider(height: 1, indent: 56, color: AppColors.divider),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Remind me before prayer',
+                    style: AppTextStyles.caption.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [5, 10, 15, 30].map((mins) {
+                      final isSelected = _service.minutesBefore == mins;
+                      return ChoiceChip(
+                        label: Text('$mins min'),
+                        selected: isSelected,
+                        selectedColor: AppColors.primary.withOpacity(0.15),
+                        backgroundColor: AppColors.background,
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontSize: 13,
+                          fontFamily: 'Poppins',
+                        ),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppColors.primary.withOpacity(0.3)
+                              : AppColors.divider,
+                        ),
+                        onSelected: (_) async {
+                          await _service.setMinutesBefore(mins);
+                          setState(() {});
+                        },
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Per-prayer toggles
+                  Text(
+                    'Select prayers',
+                    style: AppTextStyles.caption.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._service.prayerNames.map((name) {
+                    final isOn = _service.isPrayerEnabled(name);
+                    return SwitchListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      value: isOn,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) async {
+                        await _service.setPrayerEnabled(name, val);
+                        setState(() {});
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

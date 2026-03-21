@@ -1,121 +1,54 @@
-import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../config/config.dart';
 
-class ScanHistoryController extends GetxController {
+/// Scan history controller using ChangeNotifier (consistent with rest of app).
+class ScanHistoryController extends ChangeNotifier {
   final Dio _dio = Dio();
 
-  final history = <Map<String, dynamic>>[].obs;
-  final isLoading = false.obs;
-  final page = 1.obs;
-  final hasMore = true.obs;
+  final List<Map<String, dynamic>> history = [];
+  bool isLoading = false;
+  int _page = 1;
+  bool hasMore = true;
+  int? expandedIndex;
 
-  final expandedIndex = RxnInt();
   static const int _limit = 20;
 
-  // ---------- sanitizer ----------
-  List<String> _sanitizeIngredientsDynamic(dynamic raw) {
-    if (raw == null) return const [];
-    List<String> list;
-    if (raw is String) {
-      list = raw.split(RegExp(r'[;\n]+|,(?![^\[]*\])')).map((e) => e.trim()).toList();
-    } else if (raw is List) {
-      list = raw.map((e) => e?.toString() ?? '').toList();
-    } else {
-      list = [raw.toString()];
-    }
-
-    final phoneOrContact = RegExp(r'\b(tel|telephone|phone|freephone|fax|email|mail|contact)\b', caseSensitive: false);
-    final urlLike         = RegExp(r'https?://|www\.', caseSensitive: false);
-    final atSymbol        = RegExp(r'@');
-    final poOrFreepost    = RegExp(r'\bpo\.?\s*box\b|\bfreepost\b', caseSensitive: false);
-    final ukPostcode      = RegExp(r'\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b', caseSensitive: false);
-    final longDigits      = RegExp(r'(?:\d[\s\-]?){7,}');
-    final addressWords    = RegExp(
-      r'\b(street|st\.|road|rd\.|avenue|ave\.|lane|ln\.|drive|dr\.|city|town|county|postcode|zip|eircode|'
-      r'leicestershire|ashby(?:-|\s)de(?:-|\s)la(?:-|\s)zouch|united kingdom|uk|republic of ireland|roi)\b',
-      caseSensitive: false,
-    );
-    final regTm           = RegExp(r'registered|trade\s*mark|™|®', caseSensitive: false);
-    final onlyPunct       = RegExp(r'^[\s,.;:()\-–—]*$');
-
-    final cleaned = <String>[];
-    for (final rawItem in list) {
-      final s = rawItem.trim();
-      if (s.isEmpty) continue;
-      if (onlyPunct.hasMatch(s)) continue;
-      if (ukPostcode.hasMatch(s)) continue;
-      if (longDigits.hasMatch(s)) continue;
-      if (phoneOrContact.hasMatch(s)) continue;
-      if (urlLike.hasMatch(s)) continue;
-      if (atSymbol.hasMatch(s)) continue;
-      if (poOrFreepost.hasMatch(s)) continue;
-
-      final commaCount = ','.allMatches(s).length;
-      final words = s.split(RegExp(r'\s+')).length;
-
-      if (addressWords.hasMatch(s)) {
-        if (commaCount >= 1 || words <= 5 || regTm.hasMatch(s)) continue;
-      }
-      if (regTm.hasMatch(s)) continue;
-      if (s.toLowerCase() == 'uk' || s.toLowerCase() == 'roi') continue;
-
-      cleaned.add(s);
-    }
-    final seen = <String>{};
-    return cleaned.where((e) => seen.add(e.toLowerCase())).toList();
+  /// Get Firebase auth token for secure API calls
+  Future<String?> _getAuthToken() async {
+    return FirebaseAuth.instance.currentUser?.getIdToken();
   }
 
-  void _applySanitizedFields(Map<String, dynamic> prod, List<String> cleanList) {
-    final cleanText = cleanList.join(', ');
-
-    prod['ingredients_list_sanitized'] = cleanList;
-    prod['ingredientsListSanitized']   = cleanList;
-
-    prod['ingredients_list'] = cleanList;
-    prod['ingredientsList']  = cleanList;
-
-    prod['ingredients_text'] = cleanText;
-    prod['ingredientsText']  = cleanText;
-
-    prod['ingredients']      = cleanText; // keep String for existing widgets
-  }
-  // --------------------------------
-
-  void _applySanitizerToHistoryList(List items) {
-    for (final it in items) {
-      if (it is! Map<String, dynamic>) continue;
-      final prod = (it['product'] is Map<String, dynamic>)
-          ? it['product'] as Map<String, dynamic>
-          : it;
-
-      final rawList = prod['ingredients_list'] ??
-          prod['ingredientsList'] ??
-          prod['ingredients'] ??
-          prod['ingredientsText'];
-
-      final cleanList = _sanitizeIngredientsDynamic(rawList);
-      _applySanitizedFields(prod, cleanList);
-    }
+  /// Build auth + client headers
+  Future<Options> _authHeaders() async {
+    final token = await _getAuthToken();
+    return Options(headers: {
+      'X-Ummaly-Client': 'mobile',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
   }
 
+  /// Fetch scan history using secure /me endpoint (UID from auth token)
   Future<void> fetchHistory(String firebaseUid, {bool loadMore = false}) async {
-    if (isLoading.value || (!hasMore.value && loadMore)) return;
+    if (isLoading || (!hasMore && loadMore)) return;
 
     if (!loadMore) {
-      page.value = 1;
-      hasMore.value = true;
+      _page = 1;
+      hasMore = true;
     }
 
-    isLoading.value = true;
+    isLoading = true;
+    notifyListeners();
+
     try {
-      final url = '${AppConfig.scanHistoryEndpoint}/$firebaseUid';
-      print('[ScanHistory] GET $url?page=${page.value}&limit=$_limit');
+      final url = '${AppConfig.scanHistoryEndpoint}/me';
+      if (kDebugMode) debugPrint('[ScanHistory] GET $url?page=$_page&limit=$_limit');
 
       final response = await _dio.get(
         url,
-        queryParameters: {'page': page.value, 'limit': _limit},
-        options: Options(headers: {'X-Ummaly-Client': 'mobile'}),
+        queryParameters: {'page': _page, 'limit': _limit},
+        options: await _authHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -123,87 +56,92 @@ class ScanHistoryController extends GetxController {
         final body = response.data;
 
         if (body is Map<String, dynamic>) {
-          if (body['items'] is List)      data = body['items'] as List;
+          if (body['items'] is List)        data = body['items'] as List;
           else if (body['history'] is List) data = body['history'] as List;
           else if (body['data'] is List)    data = body['data'] as List;
-          else                               data = const [];
+          else                              data = const [];
         } else if (body is List) {
           data = body;
         } else {
           data = const [];
         }
 
-        _applySanitizerToHistoryList(data);
-
         if (loadMore) {
           history.addAll(data.cast<Map<String, dynamic>>());
         } else {
-          history.assignAll(data.cast<Map<String, dynamic>>());
+          history
+            ..clear()
+            ..addAll(data.cast<Map<String, dynamic>>());
         }
 
         if (data.length < _limit) {
-          hasMore.value = false;
+          hasMore = false;
         } else {
-          page.value++;
+          _page++;
         }
       } else {
-        print('❌ [ScanHistoryController] Server responded with ${response.statusCode}');
+        if (kDebugMode) debugPrint('[ScanHistory] Server responded with ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error fetching history: $e');
+      if (kDebugMode) debugPrint('[ScanHistory] Error fetching: $e');
     } finally {
-      isLoading.value = false;
+      isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> refreshHistory(String firebaseUid) async {
-    page.value = 1;
-    hasMore.value = true;
+    _page = 1;
+    hasMore = true;
     await fetchHistory(firebaseUid, loadMore: false);
   }
 
   void toggleExpanded(int index) {
-    expandedIndex.value = (expandedIndex.value == index) ? null : index;
+    expandedIndex = (expandedIndex == index) ? null : index;
+    notifyListeners();
   }
 
+  /// Delete a single scan history item by barcode
   Future<void> deleteHistoryItem(Map<String, dynamic> item, String firebaseUid) async {
     try {
       final String? barcode = item['product']?['barcode'] ?? item['barcode'];
       if (barcode == null || barcode.isEmpty) {
-        print('⚠️ Missing barcode for scan history item, cannot delete.');
+        if (kDebugMode) debugPrint('[ScanHistory] Missing barcode, cannot delete');
         return;
       }
 
-      final url = '${AppConfig.scanHistoryEndpoint}/$firebaseUid/$barcode';
-      print('[ScanHistory] DELETE $url');
+      final url = '${AppConfig.scanHistoryEndpoint}/me/$barcode';
+      if (kDebugMode) debugPrint('[ScanHistory] DELETE $url');
 
       final response = await _dio.delete(
         url,
-        options: Options(headers: {'X-Ummaly-Client': 'mobile'}),
+        options: await _authHeaders(),
       );
 
       if (response.statusCode == 200) {
         final idx = history.indexWhere(
               (h) => (h['product']?['barcode'] ?? h['barcode']) == barcode,
         );
-        if (idx >= 0) history.removeAt(idx);
-        print('✅ Deleted scan history for barcode: $barcode');
-      } else {
-        print('❌ Failed to delete scan history item. Status code: ${response.statusCode}');
+        if (idx >= 0) {
+          history.removeAt(idx);
+          notifyListeners();
+        }
+        if (kDebugMode) debugPrint('[ScanHistory] Deleted barcode: $barcode');
       }
     } catch (e) {
-      print('❌ Error deleting scan history item: $e');
+      if (kDebugMode) debugPrint('[ScanHistory] Error deleting item: $e');
     }
   }
 
+  /// Delete all scan history
   Future<int?> deleteAllHistory(String firebaseUid) async {
     try {
-      final url = '${AppConfig.scanHistoryEndpoint}/$firebaseUid';
-      print('[ScanHistory] DELETE $url');
+      final url = '${AppConfig.scanHistoryEndpoint}/me';
+      if (kDebugMode) debugPrint('[ScanHistory] DELETE $url (all)');
 
       final response = await _dio.delete(
         url,
-        options: Options(headers: {'X-Ummaly-Client': 'mobile'}),
+        options: await _authHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -213,17 +151,18 @@ class ScanHistoryController extends GetxController {
             : null;
 
         history.clear();
-        hasMore.value = false;
-        page.value = 1;
-        expandedIndex.value = null;
+        hasMore = false;
+        _page = 1;
+        expandedIndex = null;
+        notifyListeners();
 
         return deletedCount ?? 0;
       } else {
-        print('❌ Failed to delete all history. Status code: ${response.statusCode}');
+        if (kDebugMode) debugPrint('[ScanHistory] Failed to delete all: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('❌ Error deleting all history: $e');
+      if (kDebugMode) debugPrint('[ScanHistory] Error deleting all: $e');
       return null;
     }
   }
